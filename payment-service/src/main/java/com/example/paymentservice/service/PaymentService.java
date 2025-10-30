@@ -5,12 +5,7 @@ import com.example.paymentservice.repository.PaymentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Recover;
-import org.springframework.retry.annotation.Retryable;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.paymentservice.model.*;
 
@@ -19,7 +14,7 @@ import java.util.Optional;
 
 
 @Service
-@Transactional
+
 public class PaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
@@ -28,11 +23,15 @@ public class PaymentService {
     private PaymentRepository paymentRepository;
 
     @Autowired
+    private PaymentProcessor paymentProcessor;
+
+    @Autowired
     private GatewayClient gatewayClient;
 
     @Autowired
     private PaymentCallbackService paymentCallbackService;
 
+    @Transactional
     public Payment createPayment(PaymentRequest paymentRequest) {
 
         try {
@@ -53,9 +52,11 @@ public class PaymentService {
             log.info("PAYMENT SAVED - ID: {}",
                     savedPayment.getPaymentId());
             // Запускаем асинхронную обработку платежа
-            processPaymentAsync(savedPayment.getId());
+            paymentProcessor.processPaymentAsync(savedPayment.getId());
 
-            return savedPayment;
+            log.info("ASYNC PAYMENT PROCESSING INITIATED FOR: {}", payment.getPaymentId());
+
+            return payment;
 
         } catch (Exception e) {
             log.error("ERROR CREATING PAYMENT: {}", e.getMessage(), e);
@@ -63,121 +64,127 @@ public class PaymentService {
         }
     }
 
-    @Async("paymentProcessorExecutor")
-    @Retryable(
-            value = {Exception.class}, // Повторяем при любых ошибках
-            maxAttempts = 3,          // 3 попытки
-            backoff = @Backoff(delay = 2000, multiplier = 2) // Задержка 2сек, 4сек, 8сек
-    )
-    public void processPaymentAsync(Long paymentId) {
-        try {
-            Payment payment = paymentRepository.findById(paymentId)
-                    .orElseThrow(() -> new RuntimeException("Payment not found: " + paymentId));
-
-            log.info("PROCESSING PAYMENT - ID: {}, CardToken: {}",
-                    payment.getPaymentId(), payment.getCardToken());
-
-            payment.setStatus(PaymentStatus.PROCESSING);
-            paymentRepository.save(payment);
-
-            log.info("PROCESSING PAYMENT THROUGH GATEWAY: {}", payment.getPaymentId());
-
-            // Создаем запрос к шлюзу с токеном
-            GatewayChargeRequest chargeRequest = new GatewayChargeRequest();
-            chargeRequest.setPaymentId(payment.getPaymentId());
-            chargeRequest.setAmount(payment.getAmount());
-            chargeRequest.setCurrency(payment.getCurrency());
-            chargeRequest.setCardToken(payment.getCardToken());
-            chargeRequest.setDescription(payment.getDescription());
-
-            // Вызываем шлюз
-            GatewayResponse gatewayResponse = gatewayClient.charge(chargeRequest);
-
-            // Обновляем платеж на основе ответа от шлюза
-            if ("SUCCESS".equals(gatewayResponse.getStatus())) {
-                payment.setStatus(PaymentStatus.SUCCESS);
-                paymentRepository.save(payment);
-                payment.setTransactionId(gatewayResponse.getTransactionId());
-                log.info("PAYMENT COMPLETE SUCCESSFULLY: {}", payment.getPaymentId());
-            } else {
-                payment.setStatus(PaymentStatus.FAILED);
-                payment.setErrorMessage(gatewayResponse.getErrorMessage());
-                paymentRepository.save(payment);
-                log.warn("PAYMENT FAILED: {}", payment.getPaymentId());
-
-                if (isRetryableError(gatewayResponse.getErrorMessage())) {
-                    throw new RuntimeException("Bank error: " + gatewayResponse.getErrorMessage());
-                }
-
-            }
-
-            if (payment.getStatus() == PaymentStatus.SUCCESS ||
-                    !isRetryableError(payment.getErrorMessage())) {
-
-                String callbackStatus = payment.getStatus() == PaymentStatus.SUCCESS ? "COMPLETED" : "FAILED";
-                paymentCallbackService.sendPaymentCallback(
-                        payment.getOrderId(),
-                        payment.getPaymentId(),
-                        callbackStatus,
-                        payment.getErrorMessage()
-                );
-            }
-
-        } catch (Exception e) {
-            log.error("ERROR PROCESSING PAYMENT {}: {}", paymentId, e.getMessage());
-            throw e;
-            // Обновляем статус платежа на FAILED в случае ошибки
-//            paymentRepository.findById(paymentId).ifPresent(p -> {
-//                p.setStatus(PaymentStatus.FAILED);
-//                p.setErrorMessage("Processing error: " + e.getMessage());
-//                paymentRepository.save(p);
+//    @Async("paymentProcessorExecutor")
+//    @Retryable(
+//            value = {Exception.class}, // Повторяем при любых ошибках
+//            maxAttempts = 3,          // 3 попытки
+//            backoff = @Backoff(delay = 2000, multiplier = 2) // Задержка 2сек, 4сек, 8сек
+//    )
+//    public void processPaymentAsync(Long paymentId) {
+//        try {
+//            Payment payment = paymentRepository.findById(paymentId)
+//                    .orElseThrow(() -> new RuntimeException("Payment not found: " + paymentId));
 //
-//                // Callback об ошибке
+//            log.info("PROCESSING PAYMENT - ID: {}, CardToken: {}",
+//                    payment.getPaymentId(), payment.getCardToken());
+//
+//            payment.setStatus(PaymentStatus.PROCESSING);
+//            paymentRepository.save(payment);
+//
+//            log.info("PROCESSING PAYMENT THROUGH GATEWAY: {}", payment.getPaymentId());
+//
+//            // Создаем запрос к шлюзу с токеном
+//            GatewayChargeRequest chargeRequest = new GatewayChargeRequest();
+//            chargeRequest.setPaymentId(payment.getPaymentId());
+//            chargeRequest.setAmount(payment.getAmount());
+//            chargeRequest.setCurrency(payment.getCurrency());
+//            chargeRequest.setCardToken(payment.getCardToken());
+//            chargeRequest.setDescription(payment.getDescription());
+//
+//            // Вызываем шлюз
+//            GatewayResponse gatewayResponse = gatewayClient.charge(chargeRequest);
+//
+//            // Обновляем платеж на основе ответа от шлюза
+//            if ("SUCCESS".equals(gatewayResponse.getStatus())) {
+//                payment.setStatus(PaymentStatus.SUCCESS);
+//                paymentRepository.save(payment);
+//                payment.setTransactionId(gatewayResponse.getTransactionId());
+//                log.info("PAYMENT COMPLETE SUCCESSFULLY: {}", payment.getPaymentId());
+//
 //                paymentCallbackService.sendPaymentCallback(
-//                        p.getOrderId(),
-//                        p.getPaymentId(),
+//                        payment.getOrderId(),
+//                        payment.getPaymentId(),
+//                        "SUCCESS",
+//                        payment.getErrorMessage()
+//                );
+//
+//            } else {
+//                if (isRetryableError(gatewayResponse.getErrorMessage())) {
+//                    throw new RuntimeException("Bank error: " + gatewayResponse.getErrorMessage());
+//                }
+//                else {
+//                    payment.setStatus(PaymentStatus.FAILED);
+//                    payment.setErrorMessage(gatewayResponse.getErrorMessage());
+//                    paymentRepository.save(payment);
+//                    log.warn("PAYMENT FAILED: {}", payment.getPaymentId());
+//
+//                    paymentCallbackService.sendPaymentCallback(
+//                            payment.getOrderId(),
+//                            payment.getPaymentId(),
+//                            "FAILED",
+//                            payment.getErrorMessage()
+//                    );
+//
+//                }
+//            }
+//
+//        } catch (Exception e) {
+//            log.error("ERROR PROCESSING PAYMENT {}: {}", paymentId, e.getMessage());
+//            if (isRetryableError(e.getMessage())) {
+//                throw e;
+//            }
+//
+//            paymentRepository.findById(paymentId).ifPresent(payment -> {
+//                payment.setStatus(PaymentStatus.FAILED);
+//                payment.setErrorMessage("Processing error: " + e.getMessage());
+//                paymentRepository.save(payment);
+//
+//                paymentCallbackService.sendPaymentCallback(
+//                        payment.getOrderId(),
+//                        payment.getPaymentId(),
 //                        "FAILED",
-//                        p.getErrorMessage()
+//                        payment.getErrorMessage()
 //                );
 //            });
-        }
-
-
-    }
-
-    private boolean isRetryableError(String errorMessage) {
-        if (errorMessage == null) return false;
-
-        String lowerError = errorMessage.toLowerCase();
-        return lowerError.contains("timeout") ||
-                lowerError.contains("busy") ||
-                lowerError.contains("temporarily") ||
-                lowerError.contains("unavailable") ||
-                lowerError.contains("try again") ||
-                lowerError.contains("банк временно недоступен") ||
-                lowerError.contains("повторите попытку");
-    }
-
-    // Этот метод вызовется после всех неудачных попыток
-    @Recover
-    public void processPaymentRecover(Exception e, Long paymentId) {
-        log.error("ALL RETRY ATTEMPTS FAILED for payment: {}", paymentId);
-
-        // Устанавливаем окончательный статус FAILED
-        paymentRepository.findById(paymentId).ifPresent(payment -> {
-            payment.setStatus(PaymentStatus.FAILED);
-            payment.setErrorMessage("Bank unavailable after 3 attempts: " + e.getMessage());
-            paymentRepository.save(payment);
-
-            // Отправляем финальный callback
-            paymentCallbackService.sendPaymentCallback(
-                    payment.getOrderId(),
-                    payment.getPaymentId(),
-                    "FAILED",
-                    payment.getErrorMessage()
-            );
-        });
-    }
+//
+//        }
+//
+//
+//    }
+//
+//    private boolean isRetryableError(String errorMessage) {
+//        if (errorMessage == null) return false;
+//
+//        String lowerError = errorMessage.toLowerCase();
+//        return lowerError.contains("timeout") ||
+//                lowerError.contains("busy") ||
+//                lowerError.contains("temporarily") ||
+//                lowerError.contains("unavailable") ||
+//                lowerError.contains("try again") ||
+//                lowerError.contains("payment declined by bank") ||
+//                lowerError.contains("повторите попытку");
+//    }
+//
+//    // Этот метод вызовется после всех неудачных попыток
+//    @Recover
+//    public void processPaymentRecover(Exception e, Long paymentId) {
+//        log.error("ALL RETRY ATTEMPTS FAILED for payment: {}", paymentId);
+//
+//        // Устанавливаем окончательный статус FAILED
+//        paymentRepository.findById(paymentId).ifPresent(payment -> {
+//            payment.setStatus(PaymentStatus.FAILED);
+//            payment.setErrorMessage("Bank unavailable after 3 attempts: " + e.getMessage());
+//            paymentRepository.save(payment);
+//
+//            // Отправляем финальный callback
+//            paymentCallbackService.sendPaymentCallback(
+//                    payment.getOrderId(),
+//                    payment.getPaymentId(),
+//                    "FAILED",
+//                    payment.getErrorMessage()
+//            );
+//        });
+//    }
 
     @Transactional(readOnly = true)
     public List<Payment> getAllPayments() {
