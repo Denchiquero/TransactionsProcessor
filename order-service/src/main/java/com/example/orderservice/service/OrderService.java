@@ -28,18 +28,18 @@ public class OrderService {
 
     public Order createOrder(OrderRequest orderRequest) {
         log.info("Creating order for customer: {}", orderRequest.getCustomerEmail());
-        // Создаем заказ
 
-        log.info("CREATE ORDER - Received CardToken: {}", orderRequest.getCardToken());
+        if (orderRequest.getCardToken() == null || orderRequest.getCardToken().trim().isEmpty()) {
+            throw new IllegalArgumentException("Card token is required");
+        }
+
         Order order = new Order();
         order.setCustomerEmail(orderRequest.getCustomerEmail());
         order.setCustomerName(orderRequest.getCustomerName());
         order.setCustomerPhone(orderRequest.getCustomerPhone());
         order.setShippingAddress(orderRequest.getShippingAddress());
-        order.setCardToken(orderRequest.getCardToken()); // ← сохраняем токен
-        order.setStatus(OrderStatus.PENDING);
-
-        log.info("Order created with CardToken: {}", order.getCardToken());
+        order.setCardToken(orderRequest.getCardToken());
+        order.setStatus(OrderStatus.PAYMENT_PROCESSING);
 
         BigDecimal totalAmount = BigDecimal.ZERO;
         for (OrderItemRequest itemRequest : orderRequest.getItems()) {
@@ -50,30 +50,40 @@ public class OrderService {
             item.setPrice(itemRequest.getPrice());
             order.getItems().add(item);
 
-            // Суммируем стоимость товаров
             BigDecimal itemTotal = itemRequest.getPrice().multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
             totalAmount = totalAmount.add(itemTotal);
         }
-
-        // 🔥 УСТАНОВИ totalAmount
         order.setTotalAmount(totalAmount);
 
         Order savedOrder = orderRepository.save(order);
-        log.info("Created order: {} with card token", savedOrder.getOrderId());
-
-        // Инициируем асинхронную обработку платежа
-        initiatePaymentProcessing(savedOrder);
-        return savedOrder;
-    }
-
-    private void initiatePaymentProcessing(Order order) {
-
-        log.info("🟡 INITIATE PAYMENT - OrderCardToken: {}", order.getCardToken());
+        log.info("Order created for payment processing: {}", savedOrder.getOrderId());
 
         try {
+            PaymentResponse paymentResponse = processPayment(savedOrder);
 
-            log.info("Calling PAYMENT-SERVICE for order: {}", order.getOrderId());
-            // Создаем запрос на платеж
+            if ("COMPLETED".equals(paymentResponse.getStatus())) {
+                savedOrder.setPaymentId(paymentResponse.getPaymentId());
+                savedOrder.setStatus(OrderStatus.PAYMENT_COMPLETED);
+
+                Order completedOrder = orderRepository.save(savedOrder);
+                log.info("Order completed successfully: {}", completedOrder.getOrderId());
+                return completedOrder;
+            } else {
+                orderRepository.delete(savedOrder);
+                String errorMsg = paymentResponse.getErrorMessage() != null ?
+                        paymentResponse.getErrorMessage() : "Payment failed";
+                log.error("Payment failed, order deleted: {}", savedOrder.getOrderId());
+                throw new PaymentFailedException(errorMsg);
+            }
+        } catch (Exception e) {
+            orderRepository.delete(savedOrder);
+            log.error("Payment processing failed, order deleted: {}", savedOrder.getOrderId(), e);
+            throw new PaymentFailedException("Payment processing failed: " + e.getMessage());
+        }
+    }
+
+    private PaymentResponse processPayment(Order order) {
+        try {
             PaymentRequest paymentRequest = new PaymentRequest();
             paymentRequest.setOrderId(order.getOrderId());
             paymentRequest.setAmount(order.getTotalAmount());
@@ -81,24 +91,27 @@ public class OrderService {
             paymentRequest.setCurrency("RUB");
             paymentRequest.setCustomerEmail(order.getCustomerEmail());
             paymentRequest.setDescription("Payment for order: " + order.getOrderId());
-            // Вызываем payment-service АСИНХРОННО
 
-            log.info("🟡 Sending to payment-service - CardToken: {}", paymentRequest.getCardToken());
+            log.info("Calling SYNC payment service");
+
             PaymentResponse paymentResponse = paymentServiceClient.createPayment(paymentRequest);
-
-            // Обновляем заказ с paymentId и меняем статус
-            order.setPaymentId(paymentResponse.getPaymentId());
-            order.setStatus(OrderStatus.PAYMENT_PENDING);
-            orderRepository.save(order);
-
-            log.info("Payment initiated for order: {}, paymentId: {}", order.getOrderId(), paymentResponse.getPaymentId());
+            return paymentResponse;
 
         } catch (Exception e) {
-            log.error("Failed to initiate payment for order: {}", order.getOrderId(), e);
-            order.setStatus(OrderStatus.PAYMENT_FAILED);
-            orderRepository.save(order);
+            PaymentResponse errorResponse = new PaymentResponse();
+            errorResponse.setStatus("FAILED");
+            errorResponse.setErrorMessage("Payment service error: " + e.getMessage());
+            return errorResponse;
         }
     }
+
+    // Кастомное исключение для неудачного платежа
+    public static class PaymentFailedException extends RuntimeException {
+        public PaymentFailedException(String message) {
+            super(message);
+        }
+    }
+
 
     public void processPaymentCallback(String orderId, String paymentStatus, String paymentId, String errorMessage) {
         try {
@@ -154,7 +167,7 @@ public class OrderService {
         order.setStatus(OrderStatus.PENDING);
         orderRepository.save(order);
 
-        initiatePaymentProcessing(order);
+        processPayment(order);
         return true;
     }
 

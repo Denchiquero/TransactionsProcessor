@@ -19,4 +19,7 @@ public interface PaymentServiceClient {
 
     @GetMapping("/api/payments/order/{orderId}")
     PaymentResponse getPaymentsByOrderId(@PathVariable String orderId);
+
+    @PostMapping("/api/payments/sync")
+    PaymentResponse createPaymentSync(@RequestBody PaymentRequest paymentRequest);
 }

@@ -2,7 +2,9 @@ package com.example.paymentservice.controller;
 
 import com.example.paymentservice.model.Payment;
 import com.example.paymentservice.model.PaymentRequest;
+import com.example.paymentservice.model.PaymentResponse;
 import com.example.paymentservice.model.PaymentStatus;
+import com.example.paymentservice.service.PaymentProcessor;
 import com.example.paymentservice.service.PaymentService;
 
 import org.slf4j.Logger;
@@ -24,6 +26,8 @@ public class PaymentController {
 
     @Autowired
     private PaymentService paymentService;
+    @Autowired
+    private PaymentProcessor paymentProcessor;
 
     @PostMapping
     public ResponseEntity<?> createPayment(@RequestBody PaymentRequest paymentRequest) {
@@ -41,8 +45,9 @@ public class PaymentController {
                 return ResponseEntity.badRequest().body(createErrorResponse("Order ID обязателен"));
             }
 
-            Payment payment = paymentService.createPayment(paymentRequest);
-            return ResponseEntity.ok(payment);
+            // Используем синхронную обработку
+            PaymentResponse paymentResponse = paymentProcessor.processPaymentImmediately(paymentRequest);
+            return ResponseEntity.ok(paymentResponse);
 
         } catch (IllegalArgumentException e) {
             log.warn("Validation error in payment request: {}", e.getMessage());
@@ -51,6 +56,12 @@ public class PaymentController {
             log.error("Internal server error in createPayment: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().body(createErrorResponse("Внутренняя ошибка сервера: " + e.getMessage()));
         }
+    }
+
+    // Добавляем синхронный endpoint (можно переименовать основной)
+    @PostMapping("/sync")
+    public ResponseEntity<?> createPaymentSync(@RequestBody PaymentRequest paymentRequest) {
+        return createPayment(paymentRequest); // делегируем основному методу
     }
 
     @GetMapping

@@ -14,6 +14,9 @@ public interface PaymentServiceClient {
     @PostMapping("/api/payments")
     PaymentResponse createPayment(@RequestBody PaymentRequest paymentRequest);
 
+    @PostMapping("/api/payments/sync")
+    PaymentResponse createPaymentSync(@RequestBody PaymentRequest paymentRequest);
+
     @GetMapping("/api/payments/payment/{paymentId}")
     PaymentResponse getPaymentByPaymentId(@PathVariable String paymentId);
 
