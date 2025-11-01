@@ -339,7 +339,7 @@ function formatCardNumber(input) {
 //Получение токена карты
 async function getCardToken(cardData) {
     try {
-        const response = await fetch('/api/tokens', {
+        const response = await fetch('/api/v1/tokens', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

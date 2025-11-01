@@ -1,71 +1,117 @@
 services:
   postgres:
     image: postgres:14
-    container_name: postgres-db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
+      POSTGRES_DB: postgres
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    networks:
+      - payment-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
 
   payment-service:
-    build: ./payment-service
-    container_name: payment-service
-    ports:
-      - "8080:8080"
+    image: docker.io/denchiquero/payment-service:latest
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment_service
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: admin
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: admin
       SERVER_PORT: 8080
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
+      # Добавляем CORS настройки для Spring Boot
+      SPRING_MVC_CORS_ALLOWED-ORIGINS: "http://localhost,http://localhost:80"
+      SPRING_MVC_CORS_ALLOWED-METHODS: "*"
+      SPRING_MVC_CORS_ALLOWED-HEADERS: "*"
+      SPRING_MVC_CORS_ALLOW-CREDENTIALS: "true"
+    networks:
+      - payment-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 5s
 
   order-service:
-    build: ./order-service
-    container_name: order-service
-    ports:
-      - "8081:8080"     
+    image: docker.io/denchiquero/order-service:latest
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/order_service
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: admin
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: admin
       SERVER_PORT: 8080
       PAYMENT_SERVICE_URL: http://payment-service:8080
+      # CORS настройки
+      SPRING_MVC_CORS_ALLOWED-ORIGINS: "http://localhost,http://localhost:80"
+      SPRING_MVC_CORS_ALLOWED-METHODS: "*"
+      SPRING_MVC_CORS_ALLOWED-HEADERS: "*"
+      SPRING_MVC_CORS_ALLOW-CREDENTIALS: "true"
+    networks:
+      - payment-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 5s
     depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
+      - postgres
 
   payment-gateway:
-    build: ./payment-gateway
-    container_name: payment-gateway
-    ports:
-      - "8082:8080"
+    image: docker.io/denchiquero/payment-gateway:latest
     environment:
       SERVER_PORT: 8080
-    restart: unless-stopped
+      # CORS настройки для payment-gateway
+      SPRING_MVC_CORS_ALLOWED-ORIGINS: "http://localhost,http://localhost:80"
+      SPRING_MVC_CORS_ALLOWED-METHODS: "*"
+      SPRING_MVC_CORS_ALLOWED-HEADERS: "*"
+      SPRING_MVC_CORS_ALLOW-CREDENTIALS: "true"
+    networks:
+      - payment-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+    depends_on:
+      - postgres
 
   frontend:
-    build: ./frontend
-    container_name: frontend
+    image: docker.io/denchiquero/frontend:latest
+    environment:
+      # Убедитесь, что фронтенд использует правильный базовый URL
+      REACT_APP_API_BASE_URL: "http://localhost/api"
+      REACT_APP_PAYMENT_SERVICE_URL: "http://localhost/api/payments"
+      REACT_APP_ORDER_SERVICE_URL: "http://localhost/api/orders"
+      REACT_APP_TOKEN_SERVICE_URL: "http://localhost/api/v1"
+    networks:
+      - payment-network
+    deploy:
+      replicas: 1
+
+  api-gateway:
+    image: docker.io/denchiquero/api-gateway:latest
     ports:
       - "80:80"
-    restart: unless-stopped
+    networks:
+      - payment-network
+    deploy:
+      replicas: 1
+    depends_on:
+    - order-service
+    - payment-service
+    - payment-gateway
+    - frontend
+    
 
 volumes:
   postgres_data:
+
+networks:
+  payment-network:
+    driver: overlay
+    attachable: true

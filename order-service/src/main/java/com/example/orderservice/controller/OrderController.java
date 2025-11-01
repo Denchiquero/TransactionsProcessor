@@ -6,23 +6,37 @@ import com.example.orderservice.model.OrderRequest;
 import com.example.orderservice.model.OrderStatus;
 import com.example.orderservice.service.OrderService;
 import com.example.orderservice.model.PaymentCallbackRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
 
+    private static final Logger log = LoggerFactory.getLogger(OrderController.class);
+
     @Autowired
     private OrderService orderService;
 
+    @GetMapping("/test")
+    public String test() {
+        log.info("=== TEST ENDPOINT CALLED ===");
+        return "Order Controller is working!";
+    }
+
     @PostMapping
     public ResponseEntity<?> createOrder(@Valid @RequestBody OrderRequest orderRequest) {
+        log.info("Received order request with card token: {}", orderRequest.getCardToken());
         try {
             Order order = orderService.createOrder(orderRequest);
             return ResponseEntity.accepted().body(order);
