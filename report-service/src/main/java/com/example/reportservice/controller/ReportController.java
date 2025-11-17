@@ -1,4 +1,3 @@
-// [file name]: ReportController.java
 package com.example.reportservice.controller;
 
 import com.example.reportservice.model.EmailRequest;

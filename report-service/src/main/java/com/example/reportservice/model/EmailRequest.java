@@ -1,4 +1,3 @@
-// [file name]: EmailRequest.java
 package com.example.reportservice.model;
 
 import jakarta.validation.constraints.Email;

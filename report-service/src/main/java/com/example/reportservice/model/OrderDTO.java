@@ -1,5 +1,3 @@
-// [file name]: OrderDTO.java
-
 package com.example.reportservice.model;
 
 import java.math.BigDecimal;

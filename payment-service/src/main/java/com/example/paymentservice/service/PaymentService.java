@@ -31,38 +31,38 @@ public class PaymentService {
     @Autowired
     private PaymentCallbackService paymentCallbackService;
 
-    @Transactional
-    public Payment createPayment(PaymentRequest paymentRequest) {
-
-        try {
-            log.info("CREATE PAYMENT for order: {}, CardToken: {}",
-                    paymentRequest.getOrderId(), paymentRequest.getCardToken());
-
-            Payment payment = new Payment();
-            payment.setStatus(PaymentStatus.PENDING);
-            payment.setOrderId(paymentRequest.getOrderId());
-            payment.setAmount(paymentRequest.getAmount());
-            payment.setCurrency(paymentRequest.getCurrency() != null ? paymentRequest.getCurrency() : "RUB");
-            payment.setCustomerEmail(paymentRequest.getCustomerEmail() != null ? paymentRequest.getCustomerEmail() : "unknown@example.com");
-            payment.setDescription(paymentRequest.getDescription());
-            payment.setCardToken(paymentRequest.getCardToken());
-            payment.setStatus(PaymentStatus.PENDING);
-
-            Payment savedPayment = paymentRepository.save(payment);
-            log.info("PAYMENT SAVED - ID: {}",
-                    savedPayment.getPaymentId());
-            // Запускаем асинхронную обработку платежа
-            paymentProcessor.processPaymentAsync(savedPayment.getId());
-
-            log.info("ASYNC PAYMENT PROCESSING INITIATED FOR: {}", payment.getPaymentId());
-
-            return payment;
-
-        } catch (Exception e) {
-            log.error("ERROR CREATING PAYMENT: {}", e.getMessage(), e);
-            throw new RuntimeException("Payment creation failed: " + e.getMessage());
-        }
-    }
+//    @Transactional
+//    public Payment createPayment(PaymentRequest paymentRequest) {
+//
+//        try {
+//            log.info("CREATE PAYMENT for order: {}, CardToken: {}",
+//                    paymentRequest.getOrderId(), paymentRequest.getCardToken());
+//
+//            Payment payment = new Payment();
+//            payment.setStatus(PaymentStatus.PENDING);
+//            payment.setOrderId(paymentRequest.getOrderId());
+//            payment.setAmount(paymentRequest.getAmount());
+//            payment.setCurrency(paymentRequest.getCurrency() != null ? paymentRequest.getCurrency() : "RUB");
+//            payment.setCustomerEmail(paymentRequest.getCustomerEmail() != null ? paymentRequest.getCustomerEmail() : "unknown@example.com");
+//            payment.setDescription(paymentRequest.getDescription());
+//            payment.setCardToken(paymentRequest.getCardToken());
+//            payment.setStatus(PaymentStatus.PENDING);
+//
+//            Payment savedPayment = paymentRepository.save(payment);
+//            log.info("PAYMENT SAVED - ID: {}",
+//                    savedPayment.getPaymentId());
+//            // Запускаем асинхронную обработку платежа
+//            paymentProcessor.processPaymentAsync(savedPayment.getId());
+//
+//            log.info("ASYNC PAYMENT PROCESSING INITIATED FOR: {}", payment.getPaymentId());
+//
+//            return payment;
+//
+//        } catch (Exception e) {
+//            log.error("ERROR CREATING PAYMENT: {}", e.getMessage(), e);
+//            throw new RuntimeException("Payment creation failed: " + e.getMessage());
+//        }
+//    }
 
 
     @Transactional(readOnly = true)

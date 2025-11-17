@@ -120,72 +120,6 @@ public class PaymentProcessor {
         }
     }
 
-
-//    public PaymentResponse processPaymentImmediately(PaymentRequest paymentRequest) {
-//        log.info("SYNC PAYMENT PROCESSING STARTED for order: {}", paymentRequest.getOrderId());
-//
-//        // Создаем платеж
-//        Payment payment = new Payment();
-//        payment.setOrderId(paymentRequest.getOrderId());
-//        payment.setAmount(paymentRequest.getAmount());
-//        payment.setCardToken(paymentRequest.getCardToken());
-//        payment.setCurrency(paymentRequest.getCurrency());
-//        payment.setCustomerEmail(paymentRequest.getCustomerEmail());
-//        payment.setDescription(paymentRequest.getDescription());
-//        payment.setStatus(PaymentStatus.PROCESSING);
-//
-//        Payment savedPayment = paymentRepository.save(payment);
-//        log.info("PAYMENT CREATED: {}", savedPayment.getPaymentId());
-//
-//        try {
-//            // Сразу обрабатываем через шлюз СИНХРОННО
-//            GatewayChargeRequest chargeRequest = new GatewayChargeRequest();
-//            chargeRequest.setPaymentId(savedPayment.getPaymentId());
-//            chargeRequest.setAmount(payment.getAmount());
-//            chargeRequest.setCurrency(payment.getCurrency());
-//            chargeRequest.setCardToken(payment.getCardToken());
-//            chargeRequest.setDescription(payment.getDescription());
-//
-//            log.info("PROCESSING PAYMENT THROUGH GATEWAY: {}", savedPayment.getPaymentId());
-//            GatewayResponse gatewayResponse = gatewayClient.charge(chargeRequest);
-//
-//            // Обновляем статус платежа
-//            if ("SUCCESS".equals(gatewayResponse.getStatus())) {
-//                payment.setStatus(PaymentStatus.SUCCESS);
-//                payment.setTransactionId(gatewayResponse.getTransactionId());
-//                paymentRepository.save(payment);
-//                log.info("PAYMENT COMPLETED SUCCESSFULLY: {}", savedPayment.getPaymentId());
-//
-//                // Сразу отправляем callback
-//                paymentCallbackService.sendPaymentCallback(
-//                        payment.getOrderId(),
-//                        payment.getPaymentId(),
-//                        "COMPLETED",
-//                        null
-//                );
-//
-//                return createSuccessResponse(payment);
-//
-//            } else {
-//                payment.setStatus(PaymentStatus.FAILED);
-//                payment.setErrorMessage(gatewayResponse.getErrorMessage());
-//                paymentRepository.save(payment);
-//                log.warn("PAYMENT FAILED: {}", savedPayment.getPaymentId());
-//
-//                return createFailedResponse(payment, gatewayResponse.getErrorMessage());
-//            }
-//
-//        } catch (Exception e) {
-//            log.error("ERROR PROCESSING PAYMENT {}: {}", savedPayment.getPaymentId(), e.getMessage());
-//            payment.setStatus(PaymentStatus.FAILED);
-//            payment.setErrorMessage("Processing error: " + e.getMessage());
-//            paymentRepository.save(payment);
-//
-//            return createFailedResponse(payment, "Processing error: " + e.getMessage());
-//        }
-//    }
-
-
     public PaymentResponse processPaymentImmediately(PaymentRequest paymentRequest) {
         log.info("SYNC PAYMENT PROCESSING for order: {}", paymentRequest.getOrderId());
 
@@ -257,7 +191,6 @@ public class PaymentProcessor {
     }
 
 
-    // Этот метод вызовется после всех неудачных попыток
     @Recover
     public void processPaymentRecover(Exception e, Long paymentId) {
         log.error("ALL RETRY ATTEMPTS FAILED for payment: {}", paymentId);

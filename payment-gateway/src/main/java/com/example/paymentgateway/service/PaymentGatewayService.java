@@ -69,10 +69,6 @@ public class PaymentGatewayService {
         return response;
     }
 
-    private boolean isValidCard(String cardNumber) {
-        return cardNumber != null && cardNumber.matches("\\d{13,19}");
-    }
-
     private String maskCardNumber(String cardNumber) {
         if (cardNumber == null || cardNumber.length() < 8) return "****";
         return "****" + cardNumber.substring(cardNumber.length() - 4);
