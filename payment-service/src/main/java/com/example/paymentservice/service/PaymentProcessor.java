@@ -121,24 +121,87 @@ public class PaymentProcessor {
     }
 
 
-    public PaymentResponse processPaymentImmediately(PaymentRequest paymentRequest) {
-        log.info("SYNC PAYMENT PROCESSING STARTED for order: {}", paymentRequest.getOrderId());
+//    public PaymentResponse processPaymentImmediately(PaymentRequest paymentRequest) {
+//        log.info("SYNC PAYMENT PROCESSING STARTED for order: {}", paymentRequest.getOrderId());
+//
+//        // Создаем платеж
+//        Payment payment = new Payment();
+//        payment.setOrderId(paymentRequest.getOrderId());
+//        payment.setAmount(paymentRequest.getAmount());
+//        payment.setCardToken(paymentRequest.getCardToken());
+//        payment.setCurrency(paymentRequest.getCurrency());
+//        payment.setCustomerEmail(paymentRequest.getCustomerEmail());
+//        payment.setDescription(paymentRequest.getDescription());
+//        payment.setStatus(PaymentStatus.PROCESSING);
+//
+//        Payment savedPayment = paymentRepository.save(payment);
+//        log.info("PAYMENT CREATED: {}", savedPayment.getPaymentId());
+//
+//        try {
+//            // Сразу обрабатываем через шлюз СИНХРОННО
+//            GatewayChargeRequest chargeRequest = new GatewayChargeRequest();
+//            chargeRequest.setPaymentId(savedPayment.getPaymentId());
+//            chargeRequest.setAmount(payment.getAmount());
+//            chargeRequest.setCurrency(payment.getCurrency());
+//            chargeRequest.setCardToken(payment.getCardToken());
+//            chargeRequest.setDescription(payment.getDescription());
+//
+//            log.info("PROCESSING PAYMENT THROUGH GATEWAY: {}", savedPayment.getPaymentId());
+//            GatewayResponse gatewayResponse = gatewayClient.charge(chargeRequest);
+//
+//            // Обновляем статус платежа
+//            if ("SUCCESS".equals(gatewayResponse.getStatus())) {
+//                payment.setStatus(PaymentStatus.SUCCESS);
+//                payment.setTransactionId(gatewayResponse.getTransactionId());
+//                paymentRepository.save(payment);
+//                log.info("PAYMENT COMPLETED SUCCESSFULLY: {}", savedPayment.getPaymentId());
+//
+//                // Сразу отправляем callback
+//                paymentCallbackService.sendPaymentCallback(
+//                        payment.getOrderId(),
+//                        payment.getPaymentId(),
+//                        "COMPLETED",
+//                        null
+//                );
+//
+//                return createSuccessResponse(payment);
+//
+//            } else {
+//                payment.setStatus(PaymentStatus.FAILED);
+//                payment.setErrorMessage(gatewayResponse.getErrorMessage());
+//                paymentRepository.save(payment);
+//                log.warn("PAYMENT FAILED: {}", savedPayment.getPaymentId());
+//
+//                return createFailedResponse(payment, gatewayResponse.getErrorMessage());
+//            }
+//
+//        } catch (Exception e) {
+//            log.error("ERROR PROCESSING PAYMENT {}: {}", savedPayment.getPaymentId(), e.getMessage());
+//            payment.setStatus(PaymentStatus.FAILED);
+//            payment.setErrorMessage("Processing error: " + e.getMessage());
+//            paymentRepository.save(payment);
+//
+//            return createFailedResponse(payment, "Processing error: " + e.getMessage());
+//        }
+//    }
 
-        // Создаем платеж
+
+    public PaymentResponse processPaymentImmediately(PaymentRequest paymentRequest) {
+        log.info("SYNC PAYMENT PROCESSING for order: {}", paymentRequest.getOrderId());
+
         Payment payment = new Payment();
         payment.setOrderId(paymentRequest.getOrderId());
         payment.setAmount(paymentRequest.getAmount());
         payment.setCardToken(paymentRequest.getCardToken());
-        payment.setCurrency(paymentRequest.getCurrency());
+        payment.setCurrency("RUB");
         payment.setCustomerEmail(paymentRequest.getCustomerEmail());
-        payment.setDescription(paymentRequest.getDescription());
+        payment.setDescription("Order payment");
         payment.setStatus(PaymentStatus.PROCESSING);
 
         Payment savedPayment = paymentRepository.save(payment);
         log.info("PAYMENT CREATED: {}", savedPayment.getPaymentId());
 
         try {
-            // Сразу обрабатываем через шлюз СИНХРОННО
             GatewayChargeRequest chargeRequest = new GatewayChargeRequest();
             chargeRequest.setPaymentId(savedPayment.getPaymentId());
             chargeRequest.setAmount(payment.getAmount());
@@ -149,34 +212,25 @@ public class PaymentProcessor {
             log.info("PROCESSING PAYMENT THROUGH GATEWAY: {}", savedPayment.getPaymentId());
             GatewayResponse gatewayResponse = gatewayClient.charge(chargeRequest);
 
-            // Обновляем статус платежа
             if ("SUCCESS".equals(gatewayResponse.getStatus())) {
                 payment.setStatus(PaymentStatus.SUCCESS);
-                payment.setTransactionId(gatewayResponse.getTransactionId());
+                payment.setTransactionId("txn_" + System.currentTimeMillis());
                 paymentRepository.save(payment);
-                log.info("PAYMENT COMPLETED SUCCESSFULLY: {}", savedPayment.getPaymentId());
-
-                // Сразу отправляем callback
-                paymentCallbackService.sendPaymentCallback(
-                        payment.getOrderId(),
-                        payment.getPaymentId(),
-                        "COMPLETED",
-                        null
-                );
+                log.info("PAYMENT SUCCESS: {}", savedPayment.getPaymentId());
 
                 return createSuccessResponse(payment);
 
             } else {
                 payment.setStatus(PaymentStatus.FAILED);
-                payment.setErrorMessage(gatewayResponse.getErrorMessage());
+                payment.setErrorMessage("Payment declined");
                 paymentRepository.save(payment);
                 log.warn("PAYMENT FAILED: {}", savedPayment.getPaymentId());
 
-                return createFailedResponse(payment, gatewayResponse.getErrorMessage());
+                return createFailedResponse(payment, "Payment declined");
             }
 
         } catch (Exception e) {
-            log.error("ERROR PROCESSING PAYMENT {}: {}", savedPayment.getPaymentId(), e.getMessage());
+            log.error("PAYMENT PROCESSING ERROR: {}", savedPayment.getPaymentId(), e);
             payment.setStatus(PaymentStatus.FAILED);
             payment.setErrorMessage("Processing error: " + e.getMessage());
             paymentRepository.save(payment);

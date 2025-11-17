@@ -61,7 +61,7 @@ const products = [
         category: 'suspension',
         price: 1500,
         description: 'Стойка стабилизатора поперечной устойчивости',
-        image: ''
+        image: 'images/stoykastab.jpg'
     },
     {
         id: 'prod_9',
@@ -109,7 +109,7 @@ const products = [
         category: 'engine',
         price: 1500,
         description: 'Топливный фильтр тонкой очистки',
-        image: ''
+        image: 'images/filtertop.jpg'
     },
     {
         id: 'prod_15',
@@ -158,6 +158,14 @@ const products = [
         price: 3400,
         description: 'Подшипник передней ступицы',
         image: 'images/podshipnik.jpg'
+    },
+    {
+        id: 'prod_21',
+        name: 'Понты на Changan',
+        category: 'body',
+        price: 24000,
+        description: 'Мощный стильные brabus понты на Чанган 2 литра авто белый Changan Tiggo pro max',
+        image: 'images/ponty.jpg'
     }
 ];
 
@@ -220,7 +228,8 @@ function getCategoryName(category) {
         'engine': 'Двигатель',
         'brakes': 'Тормоза',
         'suspension': 'Подвеска',
-        'electrics': 'Электрика'
+        'electrics': 'Электрика',
+        'body': 'Кузов',
     };
     return names[category] || category;
 }
@@ -339,7 +348,7 @@ function formatCardNumber(input) {
 //Получение токена карты
 async function getCardToken(cardData) {
     try {
-        const response = await fetch('/api/v1/tokens', {
+        const response = await fetch('/api/gateway/tokens', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

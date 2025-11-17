@@ -10,6 +10,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 @FeignClient(name = "payment-gateway", url = "payment-gateway:8080")
 public interface GatewayClient {
 
-    @PostMapping("/api/v1/charges")
+    @PostMapping("/api/gateway/charges")
     GatewayResponse charge(@RequestBody GatewayChargeRequest chargeRequest);
 }

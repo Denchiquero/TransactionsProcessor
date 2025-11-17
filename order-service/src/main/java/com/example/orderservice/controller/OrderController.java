@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -28,20 +29,15 @@ public class OrderController {
     @Autowired
     private OrderService orderService;
 
-    @GetMapping("/test")
-    public String test() {
-        log.info("=== TEST ENDPOINT CALLED ===");
-        return "Order Controller is working!";
-    }
-
     @PostMapping
     public ResponseEntity<?> createOrder(@Valid @RequestBody OrderRequest orderRequest) {
         log.info("Received order request with card token: {}", orderRequest.getCardToken());
         try {
             Order order = orderService.createOrder(orderRequest);
-            return ResponseEntity.accepted().body(order);
+            orderService.notifyReportServiceAsync(order.getOrderId());
+            return ResponseEntity.ok(order);
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(createErrorResponse("Internal server error"));
+            return ResponseEntity.badRequest().body(createErrorResponse(e.getMessage()));
         }
     }
 
@@ -84,10 +80,46 @@ public class OrderController {
 
     @GetMapping("/order/{orderId}")
     public ResponseEntity<Order> getOrderByOrderId(@PathVariable String orderId) {
+        log.info("Searching for order: {}", orderId);
         Optional<Order> order = orderService.getOrderByOrderId(orderId);
         return order.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+
+//    @GetMapping("/order/{orderId}")
+//    public ResponseEntity<Order> getOrderByOrderId(@PathVariable String orderId) {
+//        log.info("🔍 [REPORT-SERVICE CALL] Searching for order: {}", orderId);
+//
+//        // Логируем ВСЕ заказы в БД для дебага
+//        List<Order> allOrders = orderService.getAllOrders();
+//        log.info("📋 All orders in database ({} total):", allOrders.size());
+//        allOrders.forEach(order ->
+//                log.info("   - {}: status={}, created={}",
+//                        order.getOrderId(), order.getStatus(), order.getCreatedAt())
+//        );
+//
+//        Optional<Order> order = orderService.getOrderByOrderId(orderId);
+//
+//        if (order.isPresent()) {
+//            log.info("Order FOUND: {}", orderId);
+//            return ResponseEntity.ok(order.get());
+//        } else {
+//            log.error("Order NOT FOUND: {}", orderId);
+//
+//            // Логируем ближайшие заказы по времени
+//            List<Order> recentOrders = allOrders.stream()
+//                    .sorted((o1, o2) -> o2.getCreatedAt().compareTo(o1.getCreatedAt()))
+//                    .limit(5)
+//                    .collect(Collectors.toList());
+//            log.info("Recent orders:");
+//            recentOrders.forEach(recent ->
+//                    log.info("   - {}: status={}, created={}",
+//                            recent.getOrderId(), recent.getStatus(), recent.getCreatedAt())
+//            );
+//
+//            return ResponseEntity.notFound().build();
+//        }
+//    }
 
     @GetMapping("/customer/{email}")
     public ResponseEntity<List<Order>> getOrdersByCustomerEmail(@PathVariable String email) {

@@ -5,10 +5,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import lombok.Getter;
 
 @Entity
-@Getter
 @Table(name = "orders")
 public class Order {
     @Id
@@ -55,10 +53,10 @@ public class Order {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        createdAt = LocalDateTime.now().plusHours(3);
+        updatedAt = LocalDateTime.now().plusHours(3);
         if (orderId == null) {
-            orderId = "ORD_" + System.currentTimeMillis() + "_" + (int)(Math.random() * 1000);
+            orderId = "ORD_" + System.currentTimeMillis() * (int)(Math.random()*10) + "_" + (int)(Math.random() * 1000);
         }
     }
 

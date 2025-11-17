@@ -1,12 +1,13 @@
 // [file name]: OrderService.java
 package com.example.orderservice.service;
 
-import com.example.orderservice.client.PaymentServiceClient;
+import com.example.orderservice.client.*;
 import com.example.orderservice.model.*;
 import com.example.orderservice.repository.OrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,9 @@ public class OrderService {
 
     @Autowired
     private PaymentServiceClient paymentServiceClient;
+
+    @Autowired
+    private ReportServiceClient reportServiceClient;
 
     public Order createOrder(OrderRequest orderRequest) {
         log.info("Creating order for customer: {}", orderRequest.getCustomerEmail());
@@ -61,12 +65,15 @@ public class OrderService {
         try {
             PaymentResponse paymentResponse = processPayment(savedOrder);
 
+            log.info("Payment response for order: {}, {}", paymentResponse.getStatus(), savedOrder.getOrderId());
+
             if ("COMPLETED".equals(paymentResponse.getStatus())) {
                 savedOrder.setPaymentId(paymentResponse.getPaymentId());
                 savedOrder.setStatus(OrderStatus.PAYMENT_COMPLETED);
 
                 Order completedOrder = orderRepository.save(savedOrder);
                 log.info("Order completed successfully: {}", completedOrder.getOrderId());
+//                orderRepository.flush();
                 return completedOrder;
             } else {
                 orderRepository.delete(savedOrder);
@@ -79,6 +86,16 @@ public class OrderService {
             orderRepository.delete(savedOrder);
             log.error("Payment processing failed, order deleted: {}", savedOrder.getOrderId(), e);
             throw new PaymentFailedException("Payment processing failed: " + e.getMessage());
+        }
+    }
+
+    @Async
+    public void notifyReportServiceAsync(String orderId) {
+        try {
+            reportServiceClient.sendOrderConfirmation(orderId);
+            log.info("Уведомление отправлено в report-service для заказа: {}", orderId);
+        } catch (Exception e) {
+            log.error("Ошибка при уведомлении report-service: {}", e.getMessage());
         }
     }
 
@@ -113,42 +130,48 @@ public class OrderService {
     }
 
 
-    public void processPaymentCallback(String orderId, String paymentStatus, String paymentId, String errorMessage) {
-        try {
-            Optional<Order> orderOpt = orderRepository.findByOrderId(orderId);
-            if (orderOpt.isEmpty()) {
-                log.warn("Order not found for payment callback: {}", orderId);
-                return;
-            }
+    @Transactional
+    public void processPaymentCallback(String orderId, String status, String paymentId, String errorMessage) {
+        log.info("Processing payment callback for order: {}, status: {}", orderId, status);
 
-            Order order = orderOpt.get();
+        Optional<Order> orderOpt = findOrderWithRetry(orderId);
 
-            switch (paymentStatus.toUpperCase()) {
-                case "COMPLETED":
-                    order.setStatus(OrderStatus.PAYMENT_COMPLETED);
-                    log.info("Payment completed for order: {}", orderId);
-                    break;
-                case "FAILED":
-                    order.setStatus(OrderStatus.PAYMENT_FAILED);
-                    log.warn("Payment failed for order: {}, error: {}", orderId, errorMessage);
-                    break;
-                case "PROCESSING":
-                    order.setStatus(OrderStatus.PAYMENT_PROCESSING);
-                    log.info("Payment processing for order: {}", orderId);
-                    break;
-                default:
-                    log.warn("Unknown payment status: {} for order: {}", paymentStatus, orderId);
-            }
-
-            if (paymentId != null) {
-                order.setPaymentId(paymentId);
-            }
-
-            orderRepository.save(order);
-
-        } catch (Exception e) {
-            log.error("Error processing payment callback for order: {}", orderId, e);
+        if (orderOpt.isEmpty()) {
+            log.error("Order not found: {}", orderId);
+            return;
         }
+
+        Order order = orderOpt.get();
+
+        if ("COMPLETED".equals(status)) {
+            order.setPaymentId(paymentId);
+            order.setStatus(OrderStatus.PAYMENT_COMPLETED);
+            orderRepository.save(order);
+            log.info("Order payment completed: {}", orderId);
+
+        } else {
+            order.setStatus(OrderStatus.PAYMENT_FAILED);
+            orderRepository.save(order);
+            log.warn("Order payment failed: {}, error: {}", orderId, errorMessage);
+        }
+    }
+
+    private Optional<Order> findOrderWithRetry(String orderId) {
+        int attempts = 0;
+        while (attempts < 10) {
+            Optional<Order> orderOpt = orderRepository.findByOrderId(orderId);
+            if (orderOpt.isPresent()) {
+                return orderOpt;
+            }
+            attempts++;
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        return Optional.empty();
     }
 
     public boolean retryPayment(String orderId) {
