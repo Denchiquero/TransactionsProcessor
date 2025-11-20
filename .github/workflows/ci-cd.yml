@@ -110,7 +110,7 @@ jobs:
       
       - name: Start services
         run: |
-          docker-compose -f docker-compose.health.yml up -d
+          docker compose -f docker-compose.health.yml up -d
           sleep 25
           timeout 60s bash -c 'until curl -f http://localhost/api/orders; do sleep 5; done'
       
@@ -144,4 +144,4 @@ jobs:
       
       - name: Stop services
         if: always()
-        run: docker-compose -f docker-compose.health.yml down
+        run: docker compose -f docker-compose.health.yml down
