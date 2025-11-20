@@ -173,7 +173,7 @@ public class PaymentProcessor {
         }
     }
 
-    private PaymentResponse createSuccessResponse(Payment payment) {
+    public PaymentResponse createSuccessResponse(Payment payment) {
         PaymentResponse response = new PaymentResponse();
         response.setPaymentId(payment.getPaymentId());
         response.setStatus("COMPLETED");
@@ -181,7 +181,7 @@ public class PaymentProcessor {
         return response;
     }
 
-    private PaymentResponse createFailedResponse(Payment payment, String errorMessage) {
+    public PaymentResponse createFailedResponse(Payment payment, String errorMessage) {
         PaymentResponse response = new PaymentResponse();
         response.setPaymentId(payment.getPaymentId());
         response.setStatus("FAILED");
@@ -211,7 +211,7 @@ public class PaymentProcessor {
         });
     }
 
-    private boolean isRetryableError(String errorMessage) {
+    public boolean isRetryableError(String errorMessage) {
         if (errorMessage == null) return false;
 
         String lowerError = errorMessage.toLowerCase();

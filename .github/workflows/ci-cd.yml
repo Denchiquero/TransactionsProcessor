@@ -80,7 +80,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run Unit Tests
         run: |
-          echo "test"
+          cd payment-Service
+          mvn test -q
 
   integration-tests:
     needs: unit-tests
