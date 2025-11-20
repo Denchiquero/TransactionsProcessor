@@ -8,6 +8,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run Unit Tests
+        run: |
+          echo "test"
 
   integration-tests:
     needs: unit-tests
