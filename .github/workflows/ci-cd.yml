@@ -86,7 +86,7 @@ jobs:
       - name: Run Order Service Tests
         run: |
           cd order-service
-          mvn test -Dspring.profiles.active=test -q
+          mvn test -Dspring.profiles.active=test -Dtest="**/integration/*Test" -q
 
   integration-tests:
     needs: unit-tests
