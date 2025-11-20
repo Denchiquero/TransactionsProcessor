@@ -18,7 +18,8 @@ jobs:
           distribution: 'temurin'
       
       - name: Run Unit Tests
-        run: mvn test
+        run: cd payment-service
+          mvn test
           
 
   build-images:
