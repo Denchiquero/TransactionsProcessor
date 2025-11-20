@@ -75,13 +75,18 @@ jobs:
 
 
   unit-tests:
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run Unit Tests
+      - name: Run Payment Service Tests
         run: |
           cd payment-service
-          mvn test -Dspring.profiles.active=test -q
+          mvn test -q
+      - name: Run Order Service Tests
+        run: |
+          cd order-service
+          mvn test -q
 
   # e2e-tests: 
   #   runs-on: ubuntu-latest
