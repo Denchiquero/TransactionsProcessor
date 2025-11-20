@@ -24,8 +24,7 @@ jobs:
       - name: Build Payment Service JAR
         run: |
           cd payment-service
-          mvn clean package -DskipTests
-          ls -la target/ 
+          mvn clean package -DskipTests 
       
       - name: Build and push Payment Service
         uses: docker/build-push-action@v6
@@ -34,6 +33,45 @@ jobs:
           file: ./payment-service/Dockerfile
           push: true
           tags: denchiquero/payment-service:latest
+
+      - name: Build Order Service JAR
+        run: |
+          cd order-service
+          mvn clean package -DskipTests 
+      
+      - name: Build and push Order Service
+        uses: docker/build-push-action@v6
+        with:
+          context: ./order-service
+          file: ./order-service/Dockerfile
+          push: true
+          tags: denchiquero/order-service:latest
+
+      - name: Build Report Service JAR
+        run: |
+          cd report-service
+          mvn clean package -DskipTests 
+      
+      - name: Build and push Report Service
+        uses: docker/build-push-action@v6
+        with:
+          context: ./report-service
+          file: ./report-service/Dockerfile
+          push: true
+          tags: denchiquero/report-service:latest
+
+      - name: Build Gateway Service JAR
+        run: |
+          cd payment-gateway
+          mvn clean package -DskipTests 
+      
+      - name: Build and push Payment Gateway
+        uses: docker/build-push-action@v6
+        with:
+          context: ./payment-gateway
+          file: ./payment-gateway/Dockerfile
+          push: true
+          tags: denchiquero/payment-gateway:latest
 
 
   unit-tests:
