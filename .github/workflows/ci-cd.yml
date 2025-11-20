@@ -82,11 +82,11 @@ jobs:
       - name: Run Payment Service Tests
         run: |
           cd payment-service
-          mvn test -q
+          mvn test -Dspring.profiles.active=test -q
       - name: Run Order Service Tests
         run: |
           cd order-service
-          mvn test -q
+          mvn test -Dspring.profiles.active=test -q
 
   # e2e-tests: 
   #   runs-on: ubuntu-latest
