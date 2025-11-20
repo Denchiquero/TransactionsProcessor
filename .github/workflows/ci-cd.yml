@@ -4,16 +4,16 @@ on: [push]
 
 jobs:
   build:
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v4
-      
-    - uses: docker/build-push-action@v6
-      with:
-        context: ./payment-service
-        file: ./payment-service/Dockerfile
-        push: false
-        tags: payment-service:latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./payment-service
+          file: ./payment-service/Dockerfile
+          push: false
+          tags: payment-service:latest
 
 
   unit-tests:
