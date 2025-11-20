@@ -15,7 +15,7 @@ jobs:
       - name: Run Order Service Tests
         run: |
           cd order-service
-          mvn test -Dspring.profiles.active=test -Dtest="!**/integration/*Test" -q
+          mvn test -Dspring.profiles.active=test -Dtest="**/units/*Test" -q
 
   integration-tests:
     needs: unit-tests
@@ -99,6 +99,7 @@ jobs:
           tags: denchiquero/payment-gateway:latest
 
   health-check:
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
