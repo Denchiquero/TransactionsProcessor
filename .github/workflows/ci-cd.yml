@@ -41,7 +41,7 @@ jobs:
       - name: Run E2E Tests
         run: |
           # Тестируем ВСЮ систему
-          docker-compose up -d
+          docker stack deploy -c docker-compose.yml app
           sleep 30
           # Тесты, которые проходят полный сценарий:
           # Создание заказа → Оплата → Получение чека
