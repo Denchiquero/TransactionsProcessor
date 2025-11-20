@@ -112,14 +112,14 @@ jobs:
         run: |
           docker compose -f docker-compose.health.yml up -d
           sleep 25
-          timeout 60s bash -c 'until curl -f http://localhost/api/orders; do sleep 5; done'
+          timeout 60s bash -c 'until curl -f http://localhost:8081/api/orders; do sleep 5; done'
       
       - name: Run health checks
         run: |
           echo "Performing health checks..."
           
           # Проверяем API Gateway
-          if curl -f http://localhost/api/orders; then
+          if curl -f http://localhost:8081/api/orders; then
             echo "API Gateway is healthy"
           else
             echo "API Gateway is down"
@@ -127,14 +127,14 @@ jobs:
           fi
           
           # Проверяем Order Service
-          if curl -f http://localhost/api/orders/count; then
+          if curl -f http://localhost:8081/api/orders/count; then
             echo "Order Service is healthy"
           else
             echo "Order Service response unexpected (but service is running)"
           fi
           
           # Проверяем Payment Service  
-          if curl -f http://localhost/api/payments/count; then
+          if curl -f http://localhost:8081/api/payments/count; then
             echo "Payment Service is healthy"
           else
             echo "Payment Service response unexpected (but service is running)"
