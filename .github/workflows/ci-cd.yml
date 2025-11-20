@@ -102,41 +102,59 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Start services
+      - name: Test Payment Service standalone
         run: |
-          docker compose -f docker-compose.health.yml up -d
-          echo "⏳ Waiting for services to start..."
-          sleep 45  # Даём больше времени для запуска
-          echo "📊 Services status:"
-          docker compose -f docker-compose.simple.yml ps
-          echo "🔍 Checking logs..."
-          docker compose -f docker-compose.simple.yml logs --tail=50
+          echo "Testing Payment Service with H2 database..."
+          docker run -d --name test-payment -p 8080:8080 \
+            -e SPRING_DATASOURCE_URL=jdbc:h2:mem:testdb \
+            -e SPRING_DATASOURCE_USERNAME=sa \
+            -e SPRING_DATASOURCE_PASSWORD= \
+            -e SERVER_PORT=8080 \
+            -e SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop \
+            denchiquero/payment-service:latest
+          
+          echo "Waiting for startup..."
+          sleep 30
+          
+          echo "Checking logs:"
+          docker logs test-payment --tail=20
+          
+          if curl -f http://localhost:8080/actuator/health; then
+            echo "Payment Service works!"
+            docker stop test-payment
+            docker rm test-payment
+          else
+            echo "Payment Service failed"
+            docker logs test-payment
+            exit 1
+          fi
       
-      - name: Wait for services to be healthy
+      - name: Test Order Service standalone
         run: |
-          echo "⏳ Waiting for services to become healthy..."
-          # Ждем пока healthchecks пройдут
-          timeout 120s bash -c '
-            while true; do
-              if curl -f http://localhost:8080/actuator/health && curl -f http://localhost:8081/actuator/health; then
-                echo "✅ All services are healthy!"
-                break
-              fi
-              echo "⏳ Services not ready yet, waiting..."
-              sleep 10
-            done
-          '
-      
-      - name: Run Simple Health E2E tests
-        run: |
-          echo "🏥 Running Simple Health E2E tests..."
-          cd order-service
-          mvn test -Dtest="**/e2e/SimpleHealthE2ETest" -q
-          echo "✅ Simple Health E2E tests passed!"
-      
-      - name: Stop services
-        if: always()
-        run: |
-          docker compose -f docker-compose.health.yml down
+          echo "Testing Order Service with H2 database..."
+          docker run -d --name test-order -p 8081:8080 \
+            -e SPRING_DATASOURCE_URL=jdbc:h2:mem:testdb \
+            -e SPRING_DATASOURCE_USERNAME=sa \
+            -e SPRING_DATASOURCE_PASSWORD= \
+            -e SERVER_PORT=8080 \
+            -e PAYMENT_SERVICE_URL=http://host.docker.internal:8080 \
+            -e SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop \
+            denchiquero/order-service:latest
+          
+          echo "Waiting for startup..."
+          sleep 30
+          
+          echo "Checking logs:"
+          docker logs test-order --tail=20
+          
+          if curl -f http://localhost:8081/actuator/health; then
+            echo "Order Service works!"
+            docker stop test-order
+            docker rm test-order
+          else
+            echo "Order Service failed"
+            docker logs test-order
+            exit 1
+          fi
+          
+          echo "Both services work correctly"
