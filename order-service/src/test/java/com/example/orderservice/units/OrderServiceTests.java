@@ -1,4 +1,4 @@
-package com.example.orderservice;
+package com.example.orderservice.units;
 
 import com.example.orderservice.client.PaymentServiceClient;
 import com.example.orderservice.client.ReportServiceClient;
@@ -11,7 +11,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
