@@ -1,112 +1,44 @@
-name: CI/CD to Localhost
+name: CI/CD Pipeline
 
-on:
-  push:
-    branches: [ main, master ]
+on: [push]
 
 jobs:
-  tests:
+  unit-tests:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [payment-service, order-service, payment-gateway, report-service]
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: maven
-      
-      - name: Test ${{ matrix.service }}
+      - uses: actions/checkout@v4
+      - name: Run Unit Tests
         run: |
-          echo "Testing ${{ matrix.service }}..."
-          if [ -f "${{ matrix.service }}/pom.xml" ]; then
-            cd ${{ matrix.service }}
-            mvn test -q
-            echo "✅ ${{ matrix.service }} tests passed!"
-          else
-            echo "⚠️  No pom.xml found for ${{ matrix.service }}, skipping tests"
-          fi
+          # Тестируем КАЖДЫЙ сервис отдельно
+          for service in payment-service order-service payment-gateway report-service; do
+            if [ -d "$service" ]; then
+              echo "🔍 Testing $service..."
+              cd $service
+              mvn test
+              cd ..
+            fi
+          done
 
   integration-tests:
-    needs: tests
+    needs: unit-tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Start test environment
+      - uses: actions/checkout@v4
+      - name: Run Integration Tests
         run: |
-          docker-compose -f docker-compose.test.yml up -d
-          sleep 30
-          docker-compose ps
-      
-      - name: Run integration tests
-        run: |
-          echo "Running integration tests..."
-          # Здесь можно добавить интеграционные тесты
-          # Например: mvn verify -pl integration-tests
-          echo "Integration tests completed! ✅"
-      
-      - name: Stop test environment
-        if: always()
-        run: |
-          docker-compose -f docker-compose.test.yml down
+          # Тестируем взаимодействие между 2-3 сервисами
+          echo "Testing payment + order integration..."
+          # Здесь тесты, которые проверяют API вызовы между сервисами
 
-  deploy-to-local:
-    needs: integration-tests
+  e2e-tests:
+    needs: integration-tests  
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Deploy to Localhost
+      - uses: actions/checkout@v4
+      - name: Run E2E Tests
         run: |
-          echo "🚀 Starting deployment to localhost..."
-          
-          # Создаем простой скрипт для деплоя
-          cat > deploy-local.sh << 'EOF'
-          #!/bin/bash
-          echo "Stopping existing containers..."
-          docker-compose down || true
-          
-          echo "Pulling latest images..."
-          docker-compose pull || true
-          
-          echo "Starting services..."
+          # Тестируем ВСЮ систему
           docker-compose up -d
-          
-          echo "Waiting for services to be ready..."
           sleep 30
-          
-          echo "Checking services status:"
-          docker-compose ps
-          
-          echo "✅ Deployment completed!"
-          echo "🌐 Frontend: http://localhost:80"
-          echo "🔧 API Gateway: http://localhost:8081"
-          EOF
-          
-          chmod +x deploy-local.sh
-          echo "Deploy script created successfully!"
-          
-          # Здесь можно добавить автоматический вызов скрипта
-          # если настроен доступ к вашему локальному компьютеру
-
-  notify:
-    needs: deploy-to-local
-    runs-on: ubuntu-latest
-    steps:
-      - name: Notify deployment ready
-        run: |
-          echo "🎉 CI/CD pipeline completed successfully!"
-          echo "Run './deploy-local.sh' on your local machine to update"
-          echo "Or manually run: docker-compose down && docker-compose pull && docker-compose up -d"
+          # Тесты, которые проходят полный сценарий:
+          # Создание заказа → Оплата → Получение чека
