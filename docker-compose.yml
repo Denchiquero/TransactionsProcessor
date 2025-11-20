@@ -50,10 +50,6 @@ services:
       SPRING_DATASOURCE_USERNAME_FILE: /run/secrets/db_username
       SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/db_password
       SERVER_PORT: 8080
-      SPRING_MVC_CORS_ALLOWED-ORIGINS: "http://localhost,http://localhost:80"
-      SPRING_MVC_CORS_ALLOWED-METHODS: "*"
-      SPRING_MVC_CORS_ALLOWED-HEADERS: "*"
-      SPRING_MVC_CORS_ALLOW-CREDENTIALS: "true"
     networks:
       - payment-network
     deploy:
@@ -79,10 +75,6 @@ services:
       SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/db_password
       SERVER_PORT: 8080
       PAYMENT_SERVICE_URL: http://payment-service:8080
-      SPRING_MVC_CORS_ALLOWED-ORIGINS: "http://localhost,http://localhost:80"
-      SPRING_MVC_CORS_ALLOWED-METHODS: "*"
-      SPRING_MVC_CORS_ALLOWED-HEADERS: "*"
-      SPRING_MVC_CORS_ALLOW-CREDENTIALS: "true"
     networks:
       - payment-network
     deploy:
@@ -104,10 +96,6 @@ services:
     image: docker.io/denchiquero/payment-gateway:latest
     environment:
       SERVER_PORT: 8080
-      SPRING_MVC_CORS_ALLOWED-ORIGINS: "http://localhost,http://localhost:80"
-      SPRING_MVC_CORS_ALLOWED-METHODS: "*"
-      SPRING_MVC_CORS_ALLOWED-HEADERS: "*"
-      SPRING_MVC_CORS_ALLOW-CREDENTIALS: "true"
     networks:
       - payment-network
     deploy:
@@ -146,10 +134,6 @@ services:
       SPRING_MAIL_PORT: 587
       SPRING_MAIL_USERNAME_FILE: /run/secrets/mail_username
       SPRING_MAIL_PASSWORD_FILE: /run/secrets/mail_app_password
-      SPRING_MVC_CORS_ALLOWED-ORIGINS: "http://localhost,http://localhost:80"
-      SPRING_MVC_CORS_ALLOWED-METHODS: "*"
-      SPRING_MVC_CORS_ALLOWED-HEADERS: "*"
-      SPRING_MVC_CORS_ALLOW-CREDENTIALS: "true"
     networks:
       - payment-network
     deploy:
@@ -169,7 +153,7 @@ services:
     volumes: 
       - ./api-gateway/nginx.conf:/etc/nginx/nginx.conf
     ports:
-      - "8081:80"
+      - "80:80"
     networks:
       - payment-network
     deploy:
@@ -187,7 +171,6 @@ services:
 
 volumes:
   postgres_data_persistent:
-  app_data:
 
 networks:
   payment-network:
