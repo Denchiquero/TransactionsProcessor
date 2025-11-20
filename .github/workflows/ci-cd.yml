@@ -98,50 +98,45 @@ jobs:
           push: true
           tags: denchiquero/payment-gateway:latest
 
-  health-check:
+  e2e-health-check:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Pull latest images
-        run: |
-          docker pull denchiquero/payment-service:latest || true
-          docker pull denchiquero/order-service:latest || true
       
       - name: Start services
         run: |
-          docker compose -f docker-compose.health.yml up -d
-          sleep 25
-          timeout 60s bash -c 'until curl -f http://localhost:8081/api/orders; do sleep 5; done'
+          docker compose -f docker-compose.simple.yml up -d
+          echo "⏳ Waiting for services to start..."
+          sleep 45  # Даём больше времени для запуска
+          echo "📊 Services status:"
+          docker compose -f docker-compose.simple.yml ps
+          echo "🔍 Checking logs..."
+          docker compose -f docker-compose.simple.yml logs --tail=50
       
-      - name: Run health checks
+      - name: Wait for services to be healthy
         run: |
-          echo "Performing health checks..."
-          
-          # Проверяем API Gateway
-          if curl -f http://localhost:8081/api/orders; then
-            echo "API Gateway is healthy"
-          else
-            echo "API Gateway is down"
-            exit 1
-          fi
-          
-          # Проверяем Order Service
-          if curl -f http://localhost:8081/api/orders/count; then
-            echo "Order Service is healthy"
-          else
-            echo "Order Service response unexpected (but service is running)"
-          fi
-          
-          # Проверяем Payment Service  
-          if curl -f http://localhost:8081/api/payments/count; then
-            echo "Payment Service is healthy"
-          else
-            echo "Payment Service response unexpected (but service is running)"
-          fi
-          
-          echo "All basic health checks passed!"
+          echo "⏳ Waiting for services to become healthy..."
+          # Ждем пока healthchecks пройдут
+          timeout 120s bash -c '
+            while true; do
+              if curl -f http://localhost:8080/actuator/health && curl -f http://localhost:8081/actuator/health; then
+                echo "✅ All services are healthy!"
+                break
+              fi
+              echo "⏳ Services not ready yet, waiting..."
+              sleep 10
+            done
+          '
+      
+      - name: Run Simple Health E2E tests
+        run: |
+          echo "🏥 Running Simple Health E2E tests..."
+          cd order-service
+          mvn test -Dtest="**/e2e/SimpleHealthE2ETest" -q
+          echo "✅ Simple Health E2E tests passed!"
       
       - name: Stop services
         if: always()
-        run: docker compose -f docker-compose.health.yml down
+        run: |
+          docker compose -f docker-compose.simple.yml down
