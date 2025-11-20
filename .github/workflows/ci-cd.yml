@@ -41,6 +41,7 @@ jobs:
       - name: Run E2E Tests
         run: |
           # Тестируем ВСЮ систему
+          docker swarm init
           docker stack deploy -c docker-compose.yml app
           sleep 30
           # Тесты, которые проходят полный сценарий:
