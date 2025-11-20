@@ -106,7 +106,7 @@ jobs:
       
       - name: Start services
         run: |
-          docker compose -f docker-compose.simple.yml up -d
+          docker compose -f docker-compose.health.yml up -d
           echo "⏳ Waiting for services to start..."
           sleep 45  # Даём больше времени для запуска
           echo "📊 Services status:"
@@ -139,4 +139,4 @@ jobs:
       - name: Stop services
         if: always()
         run: |
-          docker compose -f docker-compose.simple.yml down
+          docker compose -f docker-compose.health.yml down
