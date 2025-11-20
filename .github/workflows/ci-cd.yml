@@ -19,14 +19,14 @@ jobs:
         run: |
           cd payment-service
           mvn clean package -DskipTests
-          ls -la target/  # Проверим что JAR создался
+          ls -la target/ 
       
       - name: Build and push Payment Service
         uses: docker/build-push-action@v6
         with:
           context: ./payment-service
           file: ./payment-service/Dockerfile
-          push: true
+          push: false
           tags: denchiquero/payment-service:latest
 
 
