@@ -102,10 +102,14 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Test Payment Service standalone
+      - uses: actions/checkout@v4
+      
+      - name: Start services for E2E tests
         run: |
-          echo "Testing Payment Service with H2 database..."
-          docker run -d --name test-payment -p 8080:8080 \
+          echo "Starting services for E2E tests..."
+          
+          # Запускаем Payment Service
+          docker run -d --name test-payment-e2e -p 8080:8080 \
             -e SPRING_DATASOURCE_URL=jdbc:h2:mem:testdb \
             -e SPRING_DATASOURCE_USERNAME=sa \
             -e SPRING_DATASOURCE_PASSWORD= \
@@ -113,26 +117,8 @@ jobs:
             -e SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop \
             denchiquero/payment-service:latest
           
-          echo "Waiting for startup..."
-          sleep 30
-          
-          echo "Checking logs:"
-          docker logs test-payment --tail=20
-          
-          if curl -f http://localhost:8080/actuator/health; then
-            echo "Payment Service works!"
-            docker stop test-payment
-            docker rm test-payment
-          else
-            echo "Payment Service failed"
-            docker logs test-payment
-            exit 1
-          fi
-      
-      - name: Test Order Service standalone
-        run: |
-          echo "Testing Order Service with H2 database..."
-          docker run -d --name test-order -p 8081:8080 \
+          # Запускаем Order Service
+          docker run -d --name test-order-e2e -p 8081:8080 \
             -e SPRING_DATASOURCE_URL=jdbc:h2:mem:testdb \
             -e SPRING_DATASOURCE_USERNAME=sa \
             -e SPRING_DATASOURCE_PASSWORD= \
@@ -141,20 +127,19 @@ jobs:
             -e SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop \
             denchiquero/order-service:latest
           
-          echo "Waiting for startup..."
-          sleep 30
-          
-          echo "Checking logs:"
-          docker logs test-order --tail=20
-          
-          if curl -f http://localhost:8081/actuator/health; then
-            echo "Order Service works!"
-            docker stop test-order
-            docker rm test-order
-          else
-            echo "Order Service failed"
-            docker logs test-order
-            exit 1
-          fi
-          
-          echo "Both services work correctly"
+          echo "Waiting for services to start..."
+          sleep 35
+      
+      - name: Run E2E tests
+        run: |
+          echo "Running E2E tests..."
+          cd order-service
+          mvn test -Dtest="**/e2e/SimpleServiceHealthE2ETest" -q
+          echo "E2E tests passed!"
+      
+      - name: Stop services
+        if: always()
+        run: |
+          echo "Stopping test services..."
+          docker stop test-payment-e2e test-order-e2e || true
+          docker rm test-payment-e2e test-order-e2e || true
