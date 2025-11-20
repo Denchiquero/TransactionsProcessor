@@ -92,6 +92,7 @@ jobs:
     needs: unit-tests
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Run Integration Tests
         run: |
           cd order-service
