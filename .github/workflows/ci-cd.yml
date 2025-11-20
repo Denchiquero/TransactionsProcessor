@@ -6,8 +6,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: build
       - uses: docker/build-push-action@v6
-      - name: Install docker-compose
         with:
           context: .
           file: payment-service/Dockerfile
