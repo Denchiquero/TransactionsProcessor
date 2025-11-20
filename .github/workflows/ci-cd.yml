@@ -6,12 +6,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: docker/build-push-action@v6
       - name: Install docker-compose
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-compose
-          docker-compose --version
+        with:
+          context: .
+          file: payment-service/Dockerfile
+          push: true
+          tags: denchiquero/payment-service:latest
 
 
   unit-tests:
