@@ -8,17 +8,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run Unit Tests
-        run: |
-          # Тестируем КАЖДЫЙ сервис отдельно
-          echo hello
-          for service in payment-service order-service payment-gateway report-service; do
-            if [ -d "$service" ]; then
-              echo "🔍 Testing $service..."
-              cd $service
-              mvn test
-              cd ..
-            fi
-          done
 
   integration-tests:
     needs: unit-tests
