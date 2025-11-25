@@ -1,9 +1,170 @@
+# name: CI/CD Pipeline
+
+# on: [push]
+
+# jobs:
+
+#   unit-tests:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Run Payment Service Tests
+#         run: |
+#           cd payment-service
+#           mvn test -Dspring.profiles.active=test -q
+#       - name: Run Order Service Tests
+#         run: |
+#           cd order-service
+#           mvn test -Dspring.profiles.active=test -Dtest="**/units/*Tests" -q
+
+#   integration-tests:
+#     needs: unit-tests
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Run Integration Tests
+#         run: |
+#           cd order-service
+#           mvn test -Dtest="**/integration/*Test" -q
+
+#   build-and-push:
+#     needs: integration-tests
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+      
+#       - name: Set up JDK 17
+#         uses: actions/setup-java@v4
+#         with:
+#           java-version: '17'
+#           distribution: 'temurin'
+#           cache: maven
+
+#       - name: Login Docker Hub
+#         uses: docker/login-action@v3
+#         with:
+#           username: ${{secrets.DOCKER_USERNAME}}
+#           password: ${{secrets.DOCKER_PASSWORD}}
+      
+#       - name: Build Payment Service JAR
+#         run: |
+#           cd payment-service
+#           mvn clean package -DskipTests 
+      
+#       - name: Build and push Payment Service
+#         uses: docker/build-push-action@v6
+#         with:
+#           context: ./payment-service
+#           file: ./payment-service/Dockerfile
+#           push: true
+#           tags: denchiquero/payment-service:latest
+
+#       - name: Build Order Service JAR
+#         run: |
+#           cd order-service
+#           mvn clean package -DskipTests 
+      
+#       - name: Build and push Order Service
+#         uses: docker/build-push-action@v6
+#         with:
+#           context: ./order-service
+#           file: ./order-service/Dockerfile
+#           push: true
+#           tags: denchiquero/order-service:latest
+
+#       - name: Build Report Service JAR
+#         run: |
+#           cd report-service
+#           mvn clean package -DskipTests 
+      
+#       - name: Build and push Report Service
+#         uses: docker/build-push-action@v6
+#         with:
+#           context: ./report-service
+#           file: ./report-service/Dockerfile
+#           push: true
+#           tags: denchiquero/report-service:latest
+
+#       - name: Build Gateway Service JAR
+#         run: |
+#           cd payment-gateway
+#           mvn clean package -DskipTests 
+      
+#       - name: Build and push Payment Gateway
+#         uses: docker/build-push-action@v6
+#         with:
+#           context: ./payment-gateway
+#           file: ./payment-gateway/Dockerfile
+#           push: true
+#           tags: denchiquero/payment-gateway:latest
+
+#       - name: Build and push Frontend
+#         uses: docker/build-push-action@v6
+#         with:
+#           context: ./frontend
+#           file: ./frontend/Dockerfile
+#           push: true
+#           tags: denchiquero/frontend:latest
+
+#   e2e-health-check:
+#     needs: build-and-push
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+      
+#       - name: Start services for E2E tests
+#         run: |
+#           echo "Starting services for E2E tests..."
+          
+#           # Запускаем Payment Service
+#           docker run -d --name test-payment-e2e -p 8080:8080 \
+#             -e SPRING_DATASOURCE_URL=jdbc:h2:mem:testdb \
+#             -e SPRING_DATASOURCE_USERNAME=sa \
+#             -e SPRING_DATASOURCE_PASSWORD= \
+#             -e SERVER_PORT=8080 \
+#             -e SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop \
+#             denchiquero/payment-service:latest
+          
+#           # Запускаем Order Service
+#           docker run -d --name test-order-e2e -p 8081:8080 \
+#             -e SPRING_DATASOURCE_URL=jdbc:h2:mem:testdb \
+#             -e SPRING_DATASOURCE_USERNAME=sa \
+#             -e SPRING_DATASOURCE_PASSWORD= \
+#             -e SERVER_PORT=8080 \
+#             -e PAYMENT_SERVICE_URL=http://host.docker.internal:8080 \
+#             -e SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop \
+#             denchiquero/order-service:latest
+          
+#           echo "Waiting for services to start..."
+#           sleep 35
+      
+#       - name: Run E2E tests
+#         run: |
+#           echo "Running E2E tests..."
+#           cd order-service
+#           mvn test -Dtest="**/e2e/SimpleServiceHealthE2ETest" -q
+#           echo "E2E tests passed!"
+      
+#       - name: Stop services
+#         if: always()
+#         run: |
+#           echo "Stopping test services..."
+#           docker stop test-payment-e2e test-order-e2e || true
+#           docker rm test-payment-e2e test-order-e2e || true
+
 name: CI/CD Pipeline
 
-on: [push]
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: docker.io
+  IMAGE_PREFIX: denchiquero
 
 jobs:
-
   unit-tests:
     runs-on: ubuntu-latest
     steps:
@@ -43,13 +204,8 @@ jobs:
       - name: Login Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{secrets.DOCKER_USERNAME}}
-          password: ${{secrets.DOCKER_PASSWORD}}
-      
-      - name: Build Payment Service JAR
-        run: |
-          cd payment-service
-          mvn clean package -DskipTests 
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
       
       - name: Build and push Payment Service
         uses: docker/build-push-action@v6
@@ -57,89 +213,90 @@ jobs:
           context: ./payment-service
           file: ./payment-service/Dockerfile
           push: true
-          tags: denchiquero/payment-service:latest
+          tags: ${{ env.IMAGE_PREFIX }}/payment-service:latest,${{ env.IMAGE_PREFIX }}/payment-service:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Build Order Service JAR
-        run: |
-          cd order-service
-          mvn clean package -DskipTests 
-      
       - name: Build and push Order Service
         uses: docker/build-push-action@v6
         with:
           context: ./order-service
           file: ./order-service/Dockerfile
           push: true
-          tags: denchiquero/order-service:latest
+          tags: ${{ env.IMAGE_PREFIX }}/order-service:latest,${{ env.IMAGE_PREFIX }}/order-service:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Build Report Service JAR
-        run: |
-          cd report-service
-          mvn clean package -DskipTests 
-      
       - name: Build and push Report Service
         uses: docker/build-push-action@v6
         with:
           context: ./report-service
           file: ./report-service/Dockerfile
           push: true
-          tags: denchiquero/report-service:latest
+          tags: ${{ env.IMAGE_PREFIX }}/report-service:latest,${{ env.IMAGE_PREFIX }}/report-service:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Build Gateway Service JAR
-        run: |
-          cd payment-gateway
-          mvn clean package -DskipTests 
-      
       - name: Build and push Payment Gateway
         uses: docker/build-push-action@v6
         with:
           context: ./payment-gateway
           file: ./payment-gateway/Dockerfile
           push: true
-          tags: denchiquero/payment-gateway:latest
+          tags: ${{ env.IMAGE_PREFIX }}/payment-gateway:latest,${{ env.IMAGE_PREFIX }}/payment-gateway:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-  e2e-health-check:
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/frontend:latest,${{ env.IMAGE_PREFIX }}/frontend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-staging:
     needs: build-and-push
+    if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
-      - name: Start services for E2E tests
-        run: |
-          echo "Starting services for E2E tests..."
-          
-          # Запускаем Payment Service
-          docker run -d --name test-payment-e2e -p 8080:8080 \
-            -e SPRING_DATASOURCE_URL=jdbc:h2:mem:testdb \
-            -e SPRING_DATASOURCE_USERNAME=sa \
-            -e SPRING_DATASOURCE_PASSWORD= \
-            -e SERVER_PORT=8080 \
-            -e SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop \
-            denchiquero/payment-service:latest
-          
-          # Запускаем Order Service
-          docker run -d --name test-order-e2e -p 8081:8080 \
-            -e SPRING_DATASOURCE_URL=jdbc:h2:mem:testdb \
-            -e SPRING_DATASOURCE_USERNAME=sa \
-            -e SPRING_DATASOURCE_PASSWORD= \
-            -e SERVER_PORT=8080 \
-            -e PAYMENT_SERVICE_URL=http://host.docker.internal:8080 \
-            -e SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop \
-            denchiquero/order-service:latest
-          
-          echo "Waiting for services to start..."
-          sleep 35
+      - name: Deploy to Staging
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/app
+            docker stack deploy -c docker-compose.yml payment-app
+            echo "Staging deployment completed!"
+
+  deploy-production:
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       
-      - name: Run E2E tests
-        run: |
-          echo "Running E2E tests..."
-          cd order-service
-          mvn test -Dtest="**/e2e/SimpleServiceHealthE2ETest" -q
-          echo "E2E tests passed!"
-      
-      - name: Stop services
-        if: always()
-        run: |
-          echo "Stopping test services..."
-          docker stop test-payment-e2e test-order-e2e || true
-          docker rm test-payment-e2e test-order-e2e || true
+      - name: Deploy to Production
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            cd /opt/app
+            echo "${{ secrets.DB_USERNAME }}" | docker secret create db_username - || true
+            echo "${{ secrets.DB_PASSWORD }}" | docker secret create db_password - || true
+            echo "${{ secrets.MAIL_USERNAME }}" | docker secret create mail_username - || true
+            echo "${{ secrets.MAIL_APP_PASSWORD }}" | docker secret create mail_app_password - || true
+            
+            docker stack deploy -c docker-compose.yml payment-app --with-registry-auth
+            
+            sleep 30
+            docker service ls
+            echo "Production deployment completed!"
