@@ -223,7 +223,7 @@ jobs:
 
       - name: Build Order Service JAR
         run: |
-          cd payment-service
+          cd order-service
           mvn clean package -DskipTests
 
       - name: Build and push Order Service
@@ -238,7 +238,7 @@ jobs:
 
       - name: Build Report Service JAR
         run: |
-          cd payment-service
+          cd report-service
           mvn clean package -DskipTests
 
       - name: Build and push Report Service
@@ -253,7 +253,7 @@ jobs:
 
       - name: Build Payment Gateway JAR
         run: |
-          cd payment-service
+          cd payment-gateway
           mvn clean package -DskipTests
 
       - name: Build and push Payment Gateway
