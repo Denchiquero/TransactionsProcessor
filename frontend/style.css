@@ -405,3 +405,17 @@ select {
     background: #c63b2b;
 }
 
+@media (width <= 600px) {
+    .details {
+        display: none;
+    }
+
+    .hero h1 {
+        font-size: 1.8rem;
+    }
+
+    .hero p {
+        font-size: 1.5rem;
+    }
+
+}

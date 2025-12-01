@@ -1,182 +1,3 @@
-# version: '3.8'
-
-# secrets:
-#   db_username:
-#     external: true
-#   db_password:
-#     external: true
-#   mail_username:
-#     external: true
-#   mail_app_password:
-#     external: true
-
-# services:
-#   postgres:
-#     secrets:
-#       - db_username
-#       - db_password
-#     image: postgres:14
-#     environment:
-#       POSTGRES_USER_FILE: /run/secrets/db_username
-#       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
-#       POSTGRES_DB: postgres
-#     ports:
-#       - "5432:5432"
-#     volumes:
-#       - postgres_data_persistent:/var/lib/postgresql/data
-#       - ./init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
-#     networks:
-#       - payment-network
-#     deploy:
-#       replicas: 1
-#       restart_policy:
-#         condition: on-failure
-#         delay: 5s
-#         max_attempts: 3
-#     healthcheck:
-#       test: ["CMD-SHELL", "pg_isready -U postgres"]
-#       interval: 10s
-#       timeout: 5s
-#       retries: 5
-#       start_period: 30s
-
-#   payment-service:
-#     secrets:
-#       - db_username
-#       - db_password
-#     image: docker.io/denchiquero/payment-service:latest
-#     environment:
-#       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment_service
-#       SPRING_DATASOURCE_USERNAME_FILE: /run/secrets/db_username
-#       SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/db_password
-#       SERVER_PORT: 8080
-#     networks:
-#       - payment-network
-#     deploy:
-#       replicas: 1
-#       restart_policy:
-#         condition: any
-#         delay: 5s
-#     healthcheck:
-#       test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-#       interval: 60s
-#       timeout: 20s
-#       retries: 3
-#       start_period: 60s
-
-#   order-service:
-#     secrets:
-#       - db_username
-#       - db_password
-#     image: docker.io/denchiquero/order-service:latest
-#     environment:
-#       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/order_service
-#       SPRING_DATASOURCE_USERNAME_FILE: /run/secrets/db_username
-#       SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/db_password
-#       SERVER_PORT: 8080
-#       PAYMENT_SERVICE_URL: http://payment-service:8080
-#     networks:
-#       - payment-network
-#     deploy:
-#       replicas: 1
-#       restart_policy:
-#         condition: any
-#         delay: 5s
-#     healthcheck:
-#       test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-#       interval: 60s
-#       timeout: 20s
-#       retries: 3
-#       start_period: 60s
-
-#   payment-gateway:
-#     secrets:
-#       - db_username
-#       - db_password
-#     image: docker.io/denchiquero/payment-gateway:latest
-#     environment:
-#       SERVER_PORT: 8080
-#     networks:
-#       - payment-network
-#     deploy:
-#       replicas: 1
-#       restart_policy:
-#         condition: any
-#     healthcheck:
-#       test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-#       interval: 60s
-#       timeout: 20s
-#       retries: 3
-#       start_period: 60s
-
-#   frontend:
-#     image: docker.io/denchiquero/frontend:latest
-#     networks:
-#       - payment-network
-#     deploy:
-#       replicas: 1
-#     healthcheck:
-#       test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
-#       interval: 60s
-#       timeout: 20s
-#       retries: 3
-#       start_period: 60s
-
-#   report-service:
-#     secrets:
-#       - mail_username
-#       - mail_app_password
-#     image: docker.io/denchiquero/report-service:latest
-#     environment:
-#       SERVER_PORT: 8080
-#       ORDER_SERVICE_URL: http://order-service:8080
-#       SPRING_MAIL_HOST: smtp.mail.ru
-#       SPRING_MAIL_PORT: 587
-#       SPRING_MAIL_USERNAME_FILE: /run/secrets/mail_username
-#       SPRING_MAIL_PASSWORD_FILE: /run/secrets/mail_app_password
-#     networks:
-#       - payment-network
-#     deploy:
-#       replicas: 1
-#       restart_policy:
-#         condition: any
-#         delay: 5s
-#     healthcheck:
-#       test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-#       interval: 60s
-#       timeout: 20s
-#       retries: 3
-#       start_period: 60s
-
-#   api-gateway:
-#     image: nginx:alpine
-#     volumes: 
-#       - ./api-gateway/nginx.conf:/etc/nginx/nginx.conf
-#     ports:
-#       - "80:80"
-#     networks:
-#       - payment-network
-#     deploy:
-#       replicas: 1
-#       restart_policy:
-#         condition: any
-#         delay: 10s
-#         max_attempts: 15
-#     healthcheck:
-#       test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
-#       interval: 30s
-#       timeout: 20s
-#       retries: 5
-#       start_period: 100s
-
-# volumes:
-#   postgres_data_persistent:
-
-# networks:
-#   payment-network:
-#     driver: overlay
-#     attachable: true
-
 secrets:
   db_username:
     external: true
@@ -186,6 +7,12 @@ secrets:
     external: true
   mail_app_password:
     external: true
+
+
+networks:
+  payment-network:
+    driver: overlay
+    attachable: true
 
 services:
   postgres:
@@ -204,10 +31,11 @@ services:
     networks:
       - payment-network
     deploy:
-      replicas: 1
+      replicas: 2
       placement:
         constraints:
           - node.role == manager
+        max_replicas_per_node: 1
 
       resources:
         limits:
@@ -253,6 +81,10 @@ services:
         reservations:
           memory: 256M
           cpus: '0.3'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
 
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
@@ -287,6 +119,10 @@ services:
         reservations:
           memory: 256M
           cpus: '0.3'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
 
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
@@ -316,6 +152,10 @@ services:
         reservations:
           memory: 192M
           cpus: '0.2'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
 
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
@@ -337,6 +177,10 @@ services:
         reservations:
           memory: 128M
           cpus: '0.1'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
 
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
@@ -368,13 +212,17 @@ services:
         reservations:
           memory: 192M
           cpus: '0.2'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
 
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 60s
-      timeout: 20s
-      retries: 3
-      start_period: 60s
+    # healthcheck:
+    #   test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+    #   interval: 60s
+    #   timeout: 20s
+    #   retries: 3
+    #   start_period: 60s
 
   api-gateway:
     image: nginx:alpine
@@ -397,11 +245,11 @@ services:
         reservations:
           memory: 64M
           cpus: '0.1'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
 
 volumes:
   postgres_data_persistent:
 
-networks:
-  payment-network:
-    driver: overlay
-    attachable: true
