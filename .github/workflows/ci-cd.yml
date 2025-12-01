@@ -220,8 +220,11 @@ jobs:
           tags: ${{ env.IMAGE_PREFIX }}/payment-service:latest,${{ env.IMAGE_PREFIX }}/payment-service:${{ github.sha }}
           build-args: |
             JAR_FILE=target/*.jar
-        # cache-from: type=gha
-        # cache-to: type=gha,mode=max
+
+      - name: Build Order Service JAR
+        run: |
+          cd payment-service
+          mvn clean package -DskipTests
 
       - name: Build and push Order Service
         uses: docker/build-push-action@v6
@@ -232,8 +235,11 @@ jobs:
           tags: ${{ env.IMAGE_PREFIX }}/order-service:latest,${{ env.IMAGE_PREFIX }}/order-service:${{ github.sha }}
           build-args: |
             JAR_FILE=target/*.jar
-          # cache-from: type=gha
-          # cache-to: type=gha,mode=max
+
+      - name: Build Report Service JAR
+        run: |
+          cd payment-service
+          mvn clean package -DskipTests
 
       - name: Build and push Report Service
         uses: docker/build-push-action@v6
@@ -244,8 +250,11 @@ jobs:
           tags: ${{ env.IMAGE_PREFIX }}/report-service:latest,${{ env.IMAGE_PREFIX }}/report-service:${{ github.sha }}
           build-args: |
             JAR_FILE=target/*.jar
-          # cache-from: type=gha
-          # cache-to: type=gha,mode=max
+
+      - name: Build Payment Gateway JAR
+        run: |
+          cd payment-service
+          mvn clean package -DskipTests
 
       - name: Build and push Payment Gateway
         uses: docker/build-push-action@v6
@@ -256,8 +265,6 @@ jobs:
           tags: ${{ env.IMAGE_PREFIX }}/payment-gateway:latest,${{ env.IMAGE_PREFIX }}/payment-gateway:${{ github.sha }}
           build-args: |
             JAR_FILE=target/*.jar
-          # cache-from: type=gha
-          # cache-to: type=gha,mode=max
 
       - name: Build and push Frontend
         uses: docker/build-push-action@v6
@@ -266,8 +273,6 @@ jobs:
           file: ./frontend/Dockerfile
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/frontend:latest,${{ env.IMAGE_PREFIX }}/frontend:${{ github.sha }}
-          # cache-from: type=gha
-          # cache-to: type=gha,mode=max
 
   deploy-staging:
     needs: build-and-push
