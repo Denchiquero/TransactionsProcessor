@@ -213,6 +213,8 @@ jobs:
           file: ./payment-service/Dockerfile
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/payment-service:latest,${{ env.IMAGE_PREFIX }}/payment-service:${{ github.sha }}
+          build-args: |
+            JAR_FILE=target/*.jar
         # cache-from: type=gha
         # cache-to: type=gha,mode=max
 
@@ -223,6 +225,8 @@ jobs:
           file: ./order-service/Dockerfile
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/order-service:latest,${{ env.IMAGE_PREFIX }}/order-service:${{ github.sha }}
+          build-args: |
+            JAR_FILE=target/*.jar
           # cache-from: type=gha
           # cache-to: type=gha,mode=max
 
@@ -233,6 +237,8 @@ jobs:
           file: ./report-service/Dockerfile
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/report-service:latest,${{ env.IMAGE_PREFIX }}/report-service:${{ github.sha }}
+          build-args: |
+            JAR_FILE=target/*.jar
           # cache-from: type=gha
           # cache-to: type=gha,mode=max
 
@@ -243,6 +249,8 @@ jobs:
           file: ./payment-gateway/Dockerfile
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/payment-gateway:latest,${{ env.IMAGE_PREFIX }}/payment-gateway:${{ github.sha }}
+          build-args: |
+            JAR_FILE=target/*.jar
           # cache-from: type=gha
           # cache-to: type=gha,mode=max
 
