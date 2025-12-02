@@ -274,32 +274,12 @@ jobs:
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/frontend:latest,${{ env.IMAGE_PREFIX }}/frontend:${{ github.sha }}
 
-  deploy-staging:
-    needs: build-and-push
-    if: github.ref == 'refs/heads/develop'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Deploy to Staging
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.STAGING_SSH_HOST }}
-          username: ${{ secrets.STAGING_SSH_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          script: |
-            cd /opt/app
-            docker stack deploy -c docker-compose.yml app
-            echo "Staging deployment completed!"
-
   deploy-production:
     needs: build-and-push
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Deploy to Production
+      - name: Deploy via SSH + Git pull
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.PROD_SSH_HOST }}
@@ -307,13 +287,41 @@ jobs:
           key: ${{ secrets.PROD_SSH_KEY }}
           script: |
             cd /opt/app
-            echo "${{ secrets.DB_USERNAME }}" | docker secret create db_username - || true
-            echo "${{ secrets.DB_PASSWORD }}" | docker secret create db_password - || true
-            echo "${{ secrets.MAIL_USERNAME }}" | docker secret create mail_username - || true
-            echo "${{ secrets.MAIL_APP_PASSWORD }}" | docker secret create mail_app_password - || true
+
+            git pull origin main
+
+            echo "${{ secrets.DB_USERNAME }}" | docker secret create db_username - 2>/dev/null || true
+            echo "${{ secrets.DB_PASSWORD }}" | docker secret create db_password - 2>/dev/null || true
+            echo "${{ secrets.MAIL_USERNAME }}" | docker secret create mail_username - 2>/dev/null || true
+            echo "${{ secrets.MAIL_PASSWORD }}" | docker secret create mail_app_password - 2>/dev/null || true
             
+            # Деплоим
             docker stack deploy -c docker-compose.yml payment-app --with-registry-auth
-            
-            sleep 30
+            sleep 60
             docker service ls
-            echo "Production deployment completed!"
+            echo "Staging deployment completed!"
+
+  # deploy-production:
+  #   needs: build-and-push
+  #   if: github.ref == 'refs/heads/main'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+      
+  #     - name: Deploy to Production
+  #       uses: appleboy/ssh-action@v1.0.3
+  #       with:
+  #         host: ${{ secrets.PROD_SSH_HOST }}
+  #         username: ${{ secrets.PROD_SSH_USER }}
+  #         key: ${{ secrets.PROD_SSH_KEY }}
+  #         script: |
+  #           echo "${{ secrets.DB_USERNAME }}" | docker secret create db_username - || true
+  #           echo "${{ secrets.DB_PASSWORD }}" | docker secret create db_password - || true
+  #           echo "${{ secrets.MAIL_USERNAME }}" | docker secret create mail_username - || true
+  #           echo "${{ secrets.MAIL_APP_PASSWORD }}" | docker secret create mail_app_password - || true
+            
+  #           docker stack deploy -c docker-compose.yml payment-app --with-registry-auth
+            
+  #           sleep 30
+  #           docker service ls
+  #           echo "Production deployment completed!"
