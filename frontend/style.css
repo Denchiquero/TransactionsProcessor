@@ -418,4 +418,10 @@ select {
         font-size: 1.5rem;
     }
 
+    .form-row {
+        display: grid;
+        gap: 15px; 
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+
 }
