@@ -296,7 +296,7 @@ jobs:
             echo "${{ secrets.MAIL_PASSWORD }}" | docker secret create mail_app_password - 2>/dev/null || true
             
             # Деплоим
-            docker stack deploy -c docker-compose.yml payment-app --with-registry-auth
+            docker stack deploy -c docker-compose.yml app --with-registry-auth
             sleep 60
             docker service ls
             echo "Staging deployment completed!"
