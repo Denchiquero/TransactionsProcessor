@@ -1,3 +1,5 @@
 .env
 deploy.ps1
 *.bat
+*.key
+*.crt
