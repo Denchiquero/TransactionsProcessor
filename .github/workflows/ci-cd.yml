@@ -294,6 +294,13 @@ jobs:
             echo "${{ secrets.DB_PASSWORD }}" | docker secret create db_password - 2>/dev/null || true
             echo "${{ secrets.MAIL_USERNAME }}" | docker secret create mail_username - 2>/dev/null || true
             echo "${{ secrets.MAIL_PASSWORD }}" | docker secret create mail_app_password - 2>/dev/null || true
+
+            echo "Pulling latest images..."
+            docker pull ${{ env.IMAGE_PREFIX }}/frontend:latest || true
+            docker pull ${{ env.IMAGE_PREFIX }}/order-service:latest || true
+            docker pull ${{ env.IMAGE_PREFIX }}/payment-service:latest || true
+            docker pull ${{ env.IMAGE_PREFIX }}/report-service:latest || true
+            docker pull ${{ env.IMAGE_PREFIX }}/payment-gateway:latest || true
             
             # Деплоим
             docker stack deploy -c docker-compose.yml app --with-registry-auth
