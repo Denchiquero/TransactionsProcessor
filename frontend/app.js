@@ -278,6 +278,11 @@ function openCart() {
 function closeCart() {
     document.getElementById('cart-modal').style.display = 'none';
     document.getElementById('body').style.overflow = 'scroll';
+
+    const alertContainer = document.querySelector('#cart-modal .alert-container');
+    if (alertContainer) {
+        alertContainer.innerHTML = '';
+    }
 }
 
 // Рендер товаров в корзине
@@ -393,7 +398,7 @@ function validateCardData(cardData) {
         return false;
     }
 
-    if (expiryYear < currentYear ||
+    if (expiryYear+2000 < currentYear ||
         (expiryYear === currentYear && expiryMonth < currentMonth)) {
         showAlertInCart('Срок действия карты истек', 'error');
         return false;
@@ -474,7 +479,7 @@ document.getElementById('checkout-form').addEventListener('submit', async functi
 
         if (response.ok) {
             const order = await response.json();
-            showAlertInCart(`Заказ успешно создан! Номер заказа: ${order.orderId}`, 'success');
+            showAlertInCart(`Заказ успешно создан!\nНомер заказа: ${order.orderId}\nПодтверждение заказа отправлено на email ${order.customerEmail}` , 'success');
 
             // Очищаем корзину
             cart = [];
