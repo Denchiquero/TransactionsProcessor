@@ -5,7 +5,7 @@ const products = [
         category: 'engine',
         price: 1200,
         description: 'Высококачественный масляный фильтр для всех типов двигателей',
-        image: 'images/321321321313131.jpg'
+        image: 'images/oilfilter.jpg'
     },
     {
         id: 'prod_2',
@@ -161,10 +161,10 @@ const products = [
     },
     {
         id: 'prod_21',
-        name: 'Понты на Changan',
+        name: 'Понты на Cnagnah',
         category: 'body',
         price: 24000,
-        description: 'Мощный стильные brabus понты на Чанган 2 литра авто белый Changan Tiggo pro max',
+        description: 'Мощный стильные barbus понты на машина 2 литра авто белый BOT Tigger ultra max',
         image: 'images/ponty.jpg'
     }
 ];

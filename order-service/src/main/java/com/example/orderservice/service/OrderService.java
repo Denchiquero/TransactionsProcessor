@@ -1,4 +1,3 @@
-// [file name]: OrderService.java
 package com.example.orderservice.service;
 
 import com.example.orderservice.client.*;
@@ -93,9 +92,9 @@ public class OrderService {
     public void notifyReportServiceAsync(String orderId) {
         try {
             reportServiceClient.sendOrderConfirmation(orderId);
-            log.info("Уведомление отправлено в report-service для заказа: {}", orderId);
+            log.info("Notification sent to report-service for order: {}", orderId);
         } catch (Exception e) {
-            log.error("Ошибка при уведомлении report-service: {}", e.getMessage());
+            log.error("Error during notification report-service: {}", e.getMessage());
         }
     }
 
